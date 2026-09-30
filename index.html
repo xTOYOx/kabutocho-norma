@@ -1926,7 +1926,19 @@ function seedBacklog() {
   }
   /* 今朝の #株クラ と各社のチャンネル */
   for (let k = 0, n = ri(6, 9); k < n; k++) at(1440 + ri(420, 508), null, amb('all', Math.random() < .5 ? pick(RX.quiet) : pick(['おはようございます。今日も生き残る', '夜間のニュース確認中', '寄り前の気配値を眺めてる', 'コーヒー二杯目', '今日は何が動くかな', '昨日の負けを取り返す', '先物は静か', '決算予定だけは確認しとこう'])));
-  for (const c of state.cos) { if (!powered(c.i)) continue; for (let k = 0, n = ri(1, 2); k < n; k++) at(1440 + ri(420, 508), null, amb(c.i, coAmbText(c))); }
+  /* 各社のチャンネル：前日の場中（その時点のチャートの向きに合わせる）→ 引け後 → 今朝 */
+  for (const c of state.cos) {
+    const H = c.hist, o0 = H[0].o, used = new Set();
+    const uniq = fn => { let t = fn(); for (let g = 0; g < 6 && used.has(t); g++) t = fn(); used.add(t); return t; };
+    for (let k = 0, n = ri(4, 6); k < n; k++) {
+      const kk = ri(0, H.length - 1), tmin = 540 + kk * 10 + (540 + kk * 10 >= 690 ? 60 : 0) + ri(0, 9), r = H[kk].c / o0 - 1;
+      const pool = r > .012 ? CO_BULL : r < -.012 ? CO_BEAR : Math.random() < .5 ? CO_NEU : CHATTER;
+      at(tmin, '前日 ' + hhmm(Math.min(929, tmin)), amb(c.i, uniq(() => pick(pool)(c))));
+    }
+    { const r = H[H.length - 1].c / o0 - 1, tmin = ri(960, 1380);
+      at(tmin, '前日 ' + hhmm(tmin), amb(c.i, uniq(() => Math.abs(r) < .01 ? pick(CHATTER)(c) : r > 0 ? pick([`今日の${c.short}は強かった`, '明日も続くかな', '引けまで強かったね', 'いい日だった']) : pick([`今日の${c.short}は弱かった`, '明日は戻してほしい', '引けにかけて売られたな', 'しんどい一日だった'])))); }
+    for (let k = 0, n = ri(2, 3); k < n; k++) at(1440 + ri(400, 508), null, amb(c.i, uniq(() => { const r = H[H.length - 1].c / o0 - 1; return Math.abs(r) > .012 && Math.random() < .6 ? pick(r > 0 ? CO_BULL : CO_BEAR)(c) : pick(Math.random() < .5 ? CHATTER : CO_NEU.filter(f => !/チャートきれい/.test(f(c))))(c); })));
+  }
   items.sort((a, b) => a.key - b.key);
   for (const x of items) {
     if (x.news) { publishNews(Object.assign({}, x.news, { tl: x.tl }), '前日'); continue; }
@@ -2564,7 +2576,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v21 P2P';
+const GAME_VERSION = 'v22 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
