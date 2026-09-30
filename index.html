@@ -238,6 +238,18 @@ kbd{font-family:var(--f-num);font-size:10px;letter-spacing:0;border:1px solid cu
 .tag.t-urgent{background:#b3122a;border-color:#b3122a;color:#fff;font-weight:700}
 .fps{position:absolute;top:calc(4px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);font:600 11px var(--f-num);color:var(--muted);background:rgba(8,11,18,.55);padding:1px 9px;border-radius:99px;letter-spacing:.02em}
 .fps.mid{color:var(--note)} .fps.bad{color:var(--up)}
+h1.title .ver{font:600 12px var(--f-num);color:var(--muted);letter-spacing:.04em;margin-left:10px;vertical-align:middle;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+body.bosscut #lockHint,body.bosscut #cross,body.bosscut #prompt,body.bosscut .fps,body.bossmode .hp,body.bossmode .hlog,body.bossmode .hhint,body.bossmode #notifs,body.bossmode #stampBar,body.bossmode .banner{display:none!important}
+#bossHint{position:absolute;top:calc(34px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);border:1px solid rgba(255,179,90,.35);color:#f3e2c7;padding:8px 18px;border-radius:99px;font-size:14px;white-space:nowrap;animation:bhint 2.4s ease-in-out infinite}
+#bossHint b{color:#ffc37a}
+@keyframes bhint{50%{border-color:rgba(255,179,90,.8)}}
+#bossSub{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);max-width:calc(100% - 32px);font-weight:900;font-size:clamp(20px,3.2vw,34px);color:#fff;text-shadow:0 2px 0 #000,0 0 18px rgba(0,0,0,.9);text-align:center;letter-spacing:.04em;pointer-events:none}
+#blackout{position:fixed;inset:0;z-index:25;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;text-align:center}
+#blackout.flash{background:#fff;transition:none}
+#blackout.dark{background:#000;transition:background .25s}
+#boText{color:#8a93a8;font-size:15px;margin:0;min-height:1.5em}
+#boBtns:empty{display:none}
+@media (prefers-reduced-motion:reduce){#bossHint{animation:none}#blackout.flash{background:#000}}
 .namerow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .namerow label{font-size:12.5px;color:var(--muted);font-weight:700}
 .namerow input{flex:1 1 180px;max-width:280px;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--fg);font:inherit;font-weight:700}
@@ -351,6 +363,18 @@ kbd{font-family:var(--f-num);font-size:10px;letter-spacing:0;border:1px solid cu
 .item p{font-size:12.5px;color:var(--muted);flex:1}
 .item .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .item .price{font-family:var(--f-num);font-weight:700;color:var(--amber)}
+.item h4{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.item .pips{display:inline-flex;gap:4px}
+.item .pips i{width:18px;height:7px;border-radius:4px;background:rgba(255,255,255,.12)}
+.item .pips i.on{background:var(--amber)}
+.item p.cur{flex:0 0 auto;color:var(--fg);font-size:12.5px}
+.item p.nx{font-size:12.5px;color:var(--muted)}
+.item p.nx b{color:var(--amber);font-family:var(--f-num);margin-right:2px}
+.item small.warn{color:var(--note);font-size:11.5px;line-height:1.4}
+.item.maxed{opacity:.72}
+.verdict.mid{color:var(--note)}
+.qhead .lbl small{font-size:10.5px;color:var(--muted);margin-left:4px}
+.qhead .lbl .due{color:#fff;background:var(--up);border-radius:4px;padding:0 5px;font-size:10.5px;margin-left:4px}
 .item button{padding:6px 14px;font-size:13px}
 .owned{font-size:12.5px;color:var(--muted)}
 .hist{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -476,7 +500,7 @@ body.seated .tl{width:250px}
   <div id="hud">
     <section class="hp tl" aria-label="会社の口座とノルマ">
       <div class="row1"><span class="dayno" id="hDay">DAY 1</span><span id="hClock" class="num clock">08:30</span><span id="hSession" class="sess">寄り前</span></div>
-      <div class="qhead"><span class="lbl">ノルマ</span><span class="num" id="hQuota">—</span></div>
+      <div class="qhead"><span class="lbl" id="hQLbl">ノルマ</span><span class="num" id="hQuota">—</span></div>
       <div class="qbar" id="qBar" aria-hidden="true"><div id="qCash"></div><div id="qStock"></div><div class="qmark"></div></div>
       <div class="qgap" id="hGap">—</div>
       <dl class="acct">
@@ -507,6 +531,8 @@ body.seated .tl{width:250px}
     <div class="hhint" id="hHint"><kbd>WASD</kbd> 移動 <kbd>Shift</kbd> 走る <kbd>マウス</kbd> 視点<br><kbd>E</kbd>・クリック 座る／画面を見る <kbd>Q</kbd> 指さし<br>ホイール ズーム <kbd>1</kbd>〜<kbd>6</kbd> スタンプ <kbd>Enter</kbd> チャット <kbd>T</kbd> チーム <kbd>P</kbd> 停止</div>
     <div id="notifs" aria-live="polite"></div>
     <div class="fps" id="fps" aria-hidden="true"></div>
+    <div id="bossHint" hidden>照明が落ちた……<b>奥の灯りのついた社長室</b>へ</div>
+    <div id="bossSub" hidden></div>
     <div id="cross" aria-hidden="true"></div>
     <div class="prompt" id="prompt" hidden></div>
     <div class="banner" id="banner" hidden></div>
@@ -516,6 +542,8 @@ body.seated .tl{width:250px}
     <div id="touchUI" hidden><div id="joy"><div id="joyKnob"></div></div><button class="tbtn" id="tE" type="button">操作</button><button class="tbtn" id="tTeam" type="button">チーム</button></div>
   </div>
 </div>
+
+<div id="blackout" hidden><p id="boText"></p><div id="boBtns"></div></div>
 
 <div id="panel" hidden>
   <div class="pwrap" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
@@ -906,21 +934,34 @@ const CHATTER = [
 ];
 const NOISE = ['含み損が友達。', 'ナンピンしたら底が抜けた', '今日の後場は荒れそうな予感', '昼はカツ丼。勝つ', '損切りできない病、治療法を求む', 'TKX重いな…', '利確したら上がる、ホールドしたら下がる。なぜ', '板が薄い。怖い', '寄り天だけは勘弁して', 'ノルマに追われる夢を見た', '指値が1円届かなかった', 'PTSで見てたやつ、案の定窓開けて始まった', '信用買い残が積み上がってて怖い', '材料出尽くしって言葉、便利すぎる', '今日はノートレが正解かもしれん', '決算跨ぎはギャンブル。わかってるのにやめられない', '株クラの皆さん、今日も生きてますか'];
 
+/* 購買部：レベル制。安いLv1から段階的に強くなる */
 const UPGRADES = [
-  { id: 'line1', name: 'デスク増設 I', desc: 'オフィス後ろにデスクを2台増設。千草食品・凪浜エナジーを取引できるようになる。', price: 180000, ok: s => s.up.lines === 0, own: s => s.up.lines >= 1, buy: s => { s.up.lines = 1; } },
-  { id: 'line2', name: 'デスク増設 II', desc: 'さらに2台増設。碧海不動産・ツクヨミ宇宙を取引できるようになる。', price: 260000, ok: s => s.up.lines === 1, own: s => s.up.lines >= 2, buy: s => { s.up.lines = 2; } },
-  { id: 'sokuho', name: '速報端末', desc: 'ニュースを株価が反応する約8分前に受信する（先行配信）。', price: 450000, ok: s => !s.up.sokuho, own: s => s.up.sokuho, buy: s => { s.up.sokuho = true; } },
-  { id: 'margin', name: '信用取引口座', desc: '持っていない株を先に売って、下がってから買い戻す「空売り」ができる。値下がりでも稼げる。', price: 300000, ok: s => !s.up.margin, own: s => s.up.margin, buy: s => { s.up.margin = true; } },
-  { id: 'lev2', name: '委託保証金 ×2', desc: '会社の総資産の2倍まで株を持てる（要：信用取引口座）。足りない分は借入になる。', price: 420000, ok: s => s.up.margin && s.up.lev < 2, own: s => s.up.lev >= 2, buy: s => { s.up.lev = 2; } },
-  { id: 'lev3', name: '委託保証金 ×3', desc: '総資産の3倍まで。損失も3倍になる。', price: 800000, ok: s => s.up.lev === 2, own: s => s.up.lev >= 3, buy: s => { s.up.lev = 3; } },
-  { id: 'gyoukai', name: '業界紙の定期購読', desc: '情報網が広がり、材料の前に出るリーク投稿が増える。', price: 250000, ok: s => !s.up.gyoukai, own: s => s.up.gyoukai, buy: s => { s.up.gyoukai = true; } },
-  { id: 'zerofee', name: '手数料ゼロプラン', desc: '売買手数料（約定代金の0.1%、最低¥100）が無料に。', price: 150000, ok: s => !s.up.zerofee, own: s => s.up.zerofee, buy: s => { s.up.zerofee = true; } },
-  { id: 'grace', name: 'ノルマ猶予券', desc: '一度だけ、ノルマ未達を社長に見逃してもらう。消耗品・1枚まで。', price: 500000, ok: s => s.up.grace === 0, own: s => s.up.grace > 0, buy: s => { s.up.grace = 1; } },
+  { id: 'desk', name: 'デスク増設', max: 2, lv: s => s.up.lines, set: (s, l) => { s.up.lines = l; }, lvs: [
+    { price: 60000, eff: '後ろにデスク2台。千草食品・凪浜エナジーを取引できる' },
+    { price: 140000, eff: 'さらに2台。碧海不動産・ツクヨミ宇宙を取引できる' }] },
+  { id: 'sokuho', name: '速報端末', max: 3, lv: s => s.up.sokuho | 0, set: (s, l) => { s.up.sokuho = l; }, lvs: [
+    { price: 50000, eff: 'ニュースを株価が動く約3分前に受信（先行配信）' },
+    { price: 150000, eff: '約6分前に受信' },
+    { price: 380000, eff: '約10分前に受信' }] },
+  { id: 'margin', name: '信用取引', max: 3, lv: s => s.up.margin ? s.up.lev : 0, set: (s, l) => { s.up.margin = l >= 1; s.up.lev = Math.max(1, l); }, lvs: [
+    { price: 80000, eff: '空売りができる（値下がりでも稼げる）' },
+    { price: 220000, eff: '総資産の2倍まで株を持てる。足りない分は借入' },
+    { price: 520000, eff: '総資産の3倍まで。損失も3倍になる' }] },
+  { id: 'gyoukai', name: '業界紙', max: 3, lv: s => s.up.gyoukai | 0, set: (s, l) => { s.up.gyoukai = l; }, lvs: [
+    { price: 40000, eff: '材料の前に出るリーク投稿が少し増える' },
+    { price: 120000, eff: 'リーク投稿がさらに増える' },
+    { price: 300000, eff: 'ほとんどの材料でリークが出る' }] },
+  { id: 'fee', name: '手数料プラン', max: 2, lv: s => s.up.zerofee | 0, set: (s, l) => { s.up.zerofee = l; }, lvs: [
+    { price: 30000, eff: '売買手数料が半額（0.05%・最低¥50）' },
+    { price: 90000, eff: '売買手数料が無料' }] },
+  { id: 'grace', name: 'ノルマ猶予券', consumable: true, max: 1, lv: s => s.up.grace | 0, set: (s, l) => { s.up.grace = l; }, price: s => 150000 * termOf(s.day), eff: '期限の日のノルマ未達を一度だけ見逃してもらう。1枚まで・使うと無くなる。値段は期ごとに上がる' },
 ];
+function upPrice(u, s) { return u.consumable ? u.price(s) : u.lvs[u.lv(s)].price; }
+function upCanLevel(u, s) { return u.lv(s) < u.max; }
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
-const GOAL_DAYS = 10, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v6';
-const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI'];
+const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v7';
+const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched'];
 
 /* =========================================================
    状態
@@ -949,9 +990,9 @@ function initCo(d, i) {
 }
 function newGame(mode) {
   state = {
-    v: 6, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
+    v: 7, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
     cash: START_CASH, quota: quotaFor(1), pos: {}, watch: {}, coPosts: {}, cred: {},
-    up: { lines: 0, sokuho: false, margin: false, lev: 1, analyst: false, gyoukai: false, zerofee: false, grace: 0 },
+    up: { lines: 0, sokuho: 0, margin: false, lev: 1, analyst: false, gyoukai: 0, zerofee: 0, grace: 0 },
     cos: COMPANIES.map(initCo), idxPrev: 0, idxIntra: [],
     feed: [], events: [], items: [], itemPtr: 0, calendar: [], overnight: [], rumors: [], acct: {},
     stats: { dayStart: START_CASH, dayTrades: 0, dayFees: 0, best: START_CASH, history: [], totalTrades: 0 },
@@ -1021,6 +1062,7 @@ function execFx(o) {
     case 'close': if (NET.role === 'client') closeCandles(); break;
     case 'big': bigFx(o); break;
     case 'shop': toast(`${nameOf(o.who)}が「${o.name}」を導入しました`, 'good'); sfx('coin'); break;
+    case 'knock': if (o.who !== myKey()) sfx('knock'); setTimeout(() => { if (state.phase === 'boss') { sfx('creak'); setSub('社長「……入れ」'); setTimeout(() => { if (!BQ.stage) setSub(''); }, 1800); } }, 700); break;
   }
 }
 function ledgerValue(k) { const v = state[k]; return v === undefined ? null : v; }
@@ -1087,10 +1129,26 @@ function ctl(d, key, isLocal) {
   if (a === 'pause') { if (state.phase !== 'market') return; state.paused = !!d.v; fx({ t: 'toast', text: `${nameOf(key)}が${state.paused ? '時間を止めました' : '時間を再開しました'}` }); syncCtlUI(); }
   else if (a === 'speed') { const v = [1, 2, 4].includes(d.v) ? d.v : 1; if (state.speed === v) return; state.speed = v; fx({ t: 'toast', text: `${nameOf(key)}が ${v}× 速に変更` }); syncCtlUI(); }
   else if (a === 'start') { if (isLocal && state.phase === 'lobby') startDay(); }
-  else if (a === 'shop') { if ((state.phase === 'report' && r && r.pass && !(r.day >= GOAL_DAYS && !state.cleared)) || state.phase === 'clear') { state.ready = {}; setPhase('shop'); } }
-  else if (a === 'clear') { if (state.phase === 'report' && r && r.pass && r.day >= GOAL_DAYS && !state.cleared) { state.cleared = true; setPhase('clear'); } }
-  else if (a === 'grace') { if (state.phase === 'report' && r && !r.pass && state.up.grace > 0) { state.up.grace = 0; fx({ t: 'boss', text: '社長「猶予券は受け取った。次はないぞ」' }); state.ready = {}; setPhase('shop'); } }
-  else if (a === 'over') { if (state.phase === 'report' && r && !r.pass) gameOver(`DAY ${r.day} のノルマに ${yen(r.quota - r.assets)} 届かなかった。`); }
+  else if (a === 'shop') { if ((state.phase === 'report' && r && (r.mid || (r.pass && !(r.day >= GOAL_DAYS && !state.cleared)))) || state.phase === 'clear') { state.ready = {}; setPhase('shop'); } }
+  else if (a === 'clear') { if (state.phase === 'report' && r && r.pass && !r.mid && r.day >= GOAL_DAYS && !state.cleared) { state.cleared = true; setPhase('clear'); } }
+  else if (a === 'grace') { if (state.phase === 'report' && r && !r.pass && !r.mid && state.up.grace > 0) { state.up.grace = 0; fx({ t: 'boss', text: '社長「猶予券は受け取った。次はないぞ」' }); state.ready = {}; setPhase('shop'); } }
+  else if (a === 'over') {
+    if (state.phase === 'report' && r && !r.pass && !r.mid) {
+      state.overReason = `第${termOf(r.day)}期（DAY ${r.day}〆）のノルマに ${yen(r.quota - r.assets)} 届かなかった。`;
+      state.bossDoor = 'closed'; state.punched = {};
+      try { localStorage.removeItem(SAVE_KEY); } catch (e) { }
+      setPhase('boss');
+    }
+  }
+  else if (a === 'knock') { if (state.phase === 'boss' && state.bossDoor !== 'open') { state.bossDoor = 'open'; fx({ t: 'knock', who: key }); } }
+  else if (a === 'punched') {
+    if (state.phase !== 'boss') return;
+    state.punched = state.punched || {}; state.punched[key] = 1;
+    const members = isMulti() ? (state.players || []).filter(p => p.seat >= 0).map(p => p.by || p.peer) : ['me'];
+    if (members.every(k => state.punched[k])) gameOver(state.overReason);
+    else flush(true);
+  }
+  else if (a === 'bossskip') { if (state.phase === 'boss' && (isLocal || (state.punched || {})[key])) gameOver(state.overReason); }
   else if (a === 'restart') { if (state.phase === 'over') restartGame(); }
   else if (a === 'desk') {
     const ci = d.ci | 0; if (ci < 0 || ci >= state.cos.length) return;
@@ -1162,7 +1220,7 @@ function onSnap(msg) {
   if (b.got >= b.n) {
     delete NET.snaps[key];
     let s; try { s = JSON.parse(b.parts.join('')); } catch (e) { return; }
-    if (!s || s.v !== 6 || !Array.isArray(s.cos)) return;
+    if (!s || s.v !== 7 || !Array.isArray(s.cos)) return;
     state = s; NET.hostPeer = b.peer; NET.synced = true; NET.lastSeq = b.seq; NET.electing = false;
     for (const d2 of NET.tickBuf.splice(0)) if (d2.seq > b.seq) applyTick(d2);
     clearTimeout(NET.joinTimeout); clearInterval(NET.helloIv); NET.helloIv = null;
@@ -1253,8 +1311,12 @@ function demoteToClient(peer) {
 /* =========================================================
    1日の計画
    ========================================================= */
-/* ノルマ：開始資金に「5万→15万→30万→50万…」を上乗せ */
-function quotaFor(day) { return START_CASH + 50000 * day * (day + 1) / 2; }
+function termOf(day) { return Math.ceil(Math.max(1, day) / TERM); }
+function deadlineOf(day) { return termOf(day) * TERM; }
+function daysLeft(day) { return deadlineOf(day) - day; }
+function isDeadline(day) { return day % TERM === 0; }
+/* 期ごとのノルマ：開始資金に「20万→60万→120万→200万…」を上乗せ（1期＝3営業日） */
+function quotaFor(day) { const t = termOf(day); return START_CASH + 100000 * t * (t + 1); }
 /* 突出したイベント（1日1〜2回） */
 ACC.kami = { name: '億トレ神', handle: '@oku_kami', rel: null, hue: 48, fol: 862000 };
 const BIG_TPL = {
@@ -1454,7 +1516,7 @@ function planDay(from) {
   }
   for (const e of ev) {
     if (e.t <= f) continue;
-    const leakP = (e.type === 'macro' ? .35 : .55) + (state.up.gyoukai ? .25 : 0);
+    const leakP = (e.type === 'macro' ? .35 : .55) + [0, .12, .25, .4][state.up.gyoukai | 0];
     if (e.type !== 'bait' && Math.random() < leakP) {
       const acct = wpick(LEAKERS), rel = ACC[acct].rel, trueDir = e.type === 'macro' ? e.dir : (Math.sign(e.m) || 1);
       const dir = Math.random() < rel ? trueDir : -trueDir;
@@ -1463,7 +1525,7 @@ function planDay(from) {
       if (lt >= e.t) lt = e.t - 3;
       if (lt > T_PRE && lt > f) items.push({ t: lt, a: 'leak', id: e.id, acct, dir });
     }
-    if (state.up.sokuho && e.t - 8 > T_PRE && e.t - 8 > f) items.push({ t: e.t - 8, a: 'pre', id: e.id });
+    { const L = [0, 3, 6, 10][state.up.sokuho | 0]; if (L && e.t - L > T_PRE && e.t - L > f) items.push({ t: e.t - L, a: 'pre', id: e.id }); }
     items.push({ t: e.t, a: 'news', id: e.id });
   }
   const nF = 2 + Math.floor(d / 3);
@@ -1638,11 +1700,16 @@ function mikoPost() {
   else if (mover && Math.abs(moverR) > .015) postSNS('miko', `#${mover.code} ${mover.short}、30分で${pct(moverR)}。${moverR > 0 ? '上値抵抗線を抜けた' : 'サポートを割った'}`, false, 'all');
 }
 function bossCall() {
-  const a = assets(), q = state.quota, r = a / q;
+  const a = assets(), q = state.quota, r = a / q, left = daysLeft(state.day), dl = deadlineOf(state.day);
   let text;
-  if (r >= 1.03) text = '社長（内線）「今日は順調だな。調子に乗って全部溶かすなよ」';
-  else if (r >= .99) text = '社長（内線）「ノルマまであと少しだ。引けまで気を抜くな」';
-  else text = `社長（内線）「ノルマまで${yen(q - a)}足りてないぞ。15時半に数字がなかったら、わかってるな？」`;
+  if (left > 0) {
+    if (r >= 1.03) text = `社長（内線）「もうノルマ分はあるな。DAY ${dl}の引けまで守り切れよ」`;
+    else if (r >= .99) text = `社長（内線）「ノルマまであと少しだ。期限はDAY ${dl}、まだ${left}日ある」`;
+    else text = `社長（内線）「期限のDAY ${dl}まであと${left}日。ノルマまで${yen(q - a)}だ。のんびりしてる暇はないぞ」`;
+  }
+  else if (r >= 1.03) text = '社長（内線）「今日が期限だが順調だな。調子に乗って全部溶かすなよ」';
+  else if (r >= .99) text = '社長（内線）「ノルマまであと少しだ。今日が期限だぞ。引けまで気を抜くな」';
+  else text = `社長（内線）「今日が期限だ。ノルマまで${yen(q - a)}足りてないぞ。15時半に数字がなかったら、わかってるな？」`;
   fx({ t: 'boss', text });
 }
 function forcedLiquidation() {
@@ -1721,7 +1788,7 @@ function setTab(t) { openPanel(t); }
 /* =========================================================
    売買（会社の共有口座）
    ========================================================= */
-const feeFor = v => state.up.zerofee ? 0 : Math.max(100, Math.round(v * .001));
+const feeFor = v => (state.up.zerofee | 0) >= 2 ? 0 : state.up.zerofee ? Math.max(50, Math.round(v * .0005)) : Math.max(100, Math.round(v * .001));
 function tradeBlock(c) {
   if (state.phase !== 'market') return '営業時間外';
   const m = state.minute;
@@ -1802,10 +1869,12 @@ function onAck(msg) {
 }
 function buyUpgrade(id, key) {
   if (state.phase !== 'shop') return;
-  const u = UPGRADES.find(x => x.id === id); if (!u || !u.ok(state) || state.cash < u.price) return;
-  state.cash -= u.price; u.buy(state);
-  fx({ t: 'shop', who: key, name: u.name });
-  markAllDirty(); if (u.id === 'analyst') rebuildFeed();
+  const u = UPGRADES.find(x => x.id === id); if (!u || !upCanLevel(u, state)) return;
+  const price = upPrice(u, state); if (state.cash < price) return;
+  const nl = u.lv(state) + 1;
+  state.cash -= price; u.set(state, nl);
+  fx({ t: 'shop', who: key, name: u.consumable ? u.name : `${u.name} Lv${nl}` });
+  markAllDirty();
   refreshModal(); saveGame();
 }
 
@@ -1829,11 +1898,14 @@ function startDay() {
   for (const k in state.contrib) { state.contrib[k].r = 0; state.contrib[k].n = 0; }
   state.ready = {}; state.watch = {}; state.coPosts = {};
   planDay();
-  addFeed({ k: 'sep', text: `DAY ${state.day}　ノルマ ${yen(state.quota)}` });
+  addFeed({ k: 'sep', text: `DAY ${state.day}　第${termOf(state.day)}期ノルマ ${yen(state.quota)}（〆 DAY ${deadlineOf(state.day)}）` });
   const night = state.overnight || []; state.overnight = [];
   for (const e of night) { publishNews(e, '夜間'); applyEvent(e); }
   if (state.day === 1) postSNS('fukumi', isMulti() ? '新人チームがデスクについたらしい。ノルマ地獄へようこそ' : '今日から新人が入るらしい。ノルマ地獄へようこそ', true, 'all');
-  fx({ t: 'toast', text: `DAY ${state.day} 開始。15:30に総資産 ${yen(state.quota)} 以上が必要です`, ms: 5000 });
+  { const left = daysLeft(state.day), t = termOf(state.day);
+    if (left === 0) fx({ t: 'toast', text: `DAY ${state.day} 開始。今日が第${t}期の期限！15:30に総資産 ${yen(state.quota)} 以上が必要です`, ms: 6000 });
+    else fx({ t: 'toast', text: `DAY ${state.day} 開始。第${t}期のノルマは ${yen(state.quota)}（〆 DAY ${deadlineOf(state.day)} の15:30・あと${left}日）`, ms: 6000 });
+    if (left === TERM - 1 && state.day > 1) fx({ t: 'boss', text: `社長（内線）「第${t}期だ。ノルマは${yen(state.quota)}。DAY ${deadlineOf(state.day)}までに作れ」` }); }
   setPhase('market');
   updateLobbyPresence();
   saveGame();
@@ -1846,10 +1918,10 @@ function endDay() {
   if (state.cash < 0) charge += -state.cash * .028 / 365;
   forEachPos((k, code, p) => { if (p.qty < 0) charge += Math.abs(p.qty * co(code).price) * .0115 / 365; });
   charge = Math.round(charge); state.cash -= charge;
-  const a = assets(), pass = a >= state.quota;
-  state.stats.history.push({ day: state.day, assets: a, quota: state.quota, pass });
+  const a = assets(), pass = a >= state.quota, mid = !isDeadline(state.day);
+  state.stats.history.push({ day: state.day, assets: a, quota: state.quota, pass: mid ? null : pass });
   if (state.stats.history.length > 30) state.stats.history.shift();
-  state.report = { day: state.day, assets: a, cash: state.cash, stock: stockValue(), quota: state.quota, pass, pnl: a - state.stats.dayStart, trades: state.stats.dayTrades, fees: state.stats.dayFees, charge, afterClose: state.afterClose.slice(0, 3), carry: posCount() };
+  state.report = { day: state.day, assets: a, cash: state.cash, stock: stockValue(), quota: state.quota, pass, mid, deadline: deadlineOf(state.day), term: termOf(state.day), pnl: a - state.stats.dayStart, trades: state.stats.dayTrades, fees: state.stats.dayFees, charge, afterClose: state.afterClose.slice(0, 3), carry: posCount() };
   state.overnight = makeOvernight();
   fx({ t: 'sfx', k: 'bell' });
   setPhase('report');
@@ -1870,7 +1942,7 @@ function saveGame() {
   if (NET.role === 'client') return;
   try { const s = JSON.parse(JSON.stringify(state)); s.players = []; s.ready = {}; localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { }
 }
-function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 6 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
+function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 7 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
 
 /* =========================================================
    HUD
@@ -1911,7 +1983,7 @@ function rulesHTML() {
   return `<p class="h3">株のしくみと取引ルール</p><ul class="rules">
     <li>安いときに買って、高くなってから売ると、その<b>差がもうけ</b>になる。下がってから売ると損。</li>
     <li>お金は<b>会社の口座ひとつ</b>。買うと会社の現金が減り、売ると戻る。${isMulti() ? '持ち株は買った人のもので、売れるのもその人だけ。' : ''}</li>
-    <li>ノルマは<b>現金＋持ち株の価値（総資産）</b>で15:30に判定。持っているだけでも、株価が上がれば総資産が増える。</li>
+    <li>ノルマは<b>3営業日ごと</b>。期限の日の15:30に<b>現金＋持ち株の価値（総資産）</b>で判定。持っているだけでも、株価が上がれば総資産が増える。</li>
     <li>取引できるのは <b>9:00–11:30 と 12:30–15:30</b>。昼休みや夜のニュースは、次の取引開始の瞬間に株価へ反映される。</li>
     <li>株は<b>100株単位</b>で売り買い。手数料は取引額の0.1%（最低¥100）。</li>
     <li>1日に動ける幅には上限がある（ストップ高・ストップ安）。張り付くと売買が成立しない。</li>
@@ -2023,6 +2095,14 @@ function beep(f, dur, type, vol, when) {
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol || .06, t + .01); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
   o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + .03);
 }
+function noise(dur, vol, when, lp) {
+  if (!soundOn) return; const a = audio(); if (!a) return;
+  const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+  const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(), t = a.currentTime + (when || 0);
+  f.type = 'lowpass'; f.frequency.value = lp || 900; g.gain.value = vol || .2;
+  src.buffer = buf; src.connect(f); f.connect(g); g.connect(a.destination); src.start(t);
+}
 function sfx(k) {
   if (!soundOn || !state || state.phase === 'title') return;
   switch (k) {
@@ -2039,6 +2119,12 @@ function sfx(k) {
     case 'coin': beep(1568, .08, 'triangle', .05); beep(2093, .16, 'triangle', .05, .07); break;
     case 'ping': beep(1760, .05, 'sine', .05); beep(2349, .12, 'sine', .05, .06); break;
     case 'chat': beep(784, .06, 'sine', .035); break;
+    case 'knock': for (let i = 0; i < 3; i++) { beep(95, .09, 'triangle', .16, i * .24); noise(.06, .22, i * .24, 700); } break;
+    case 'creak': beep(210, .5, 'sawtooth', .015); beep(260, .45, 'sawtooth', .012, .12); break;
+    case 'slam': noise(.5, .55, 0, 400); beep(55, .5, 'sine', .22); beep(38, .6, 'square', .06, .02); break;
+    case 'shout': beep(170, .38, 'sawtooth', .05); beep(128, .45, 'sawtooth', .05, .12); break;
+    case 'punch': noise(.35, .7, 0, 1400); beep(70, .45, 'sine', .3); beep(45, .7, 'square', .08, .04); beep(2600, .9, 'sine', .015, .15); break;
+    case 'powerdown': for (let i = 0; i < 7; i++) beep(900 - i * 110, .14, 'sine', .035, i * .06); beep(50, .9, 'sine', .12, .45); noise(.25, .15, .42, 300); break;
   }
 }
 
@@ -2068,6 +2154,7 @@ function renderHUD() {
   $('#hAssets').textContent = yen(a);
   const pe = $('#hPnl'); pe.textContent = sYen(pnl); pe.className = pnl > 0 ? 'up' : pnl < 0 ? 'down' : 'flat';
   $('#hQuota').textContent = yen(state.quota);
+  { const l = $('#hQLbl'), left = daysLeft(state.day); if (l) { const h = left === 0 ? 'ノルマ <b class="due">本日〆</b>' : `ノルマ <small>〆DAY ${deadlineOf(state.day)}・あと${left}日</small>`; if (l.innerHTML !== h) l.innerHTML = h; } }
   const r = a / state.quota, scale = 1.25 * state.quota;
   const cw = clamp(Math.max(0, cash) / scale, 0, 1), sw = clamp(Math.max(0, stock) / scale, 0, 1 - cw);
   $('#qCash').style.width = (cw * 100) + '%';
@@ -2433,6 +2520,8 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
+const GAME_VERSION = 'v20 P2P';
+const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
   const W = ROOM.x1 - ROOM.x0, D = ROOM.z1 - ROOM.z0, cz = (ROOM.z0 + ROOM.z1) / 2;
@@ -2460,9 +2549,22 @@ function drawLogo() {
   const ledA = new THREE.MeshBasicMaterial({ color: '#2fb8ff' }), ledB = new THREE.MeshBasicMaterial({ color: '#9a5bff' });
   const walls = [[0, ROOM.z0, 0, W], [0, ROOM.z1, Math.PI, W], [ROOM.x0, cz, Math.PI / 2, D], [ROOM.x1, cz, -Math.PI / 2, D]];
   for (const [x, z, ry, w] of walls) {
+    const back = z === ROOM.z1;
+    if (back) {
+      /* 奥の壁は社長室のドアの穴をあけて3枚に */
+      for (const [a0, a1, y0, y1] of [[ROOM.x0, DOOR.x0, 0, ROOM.h], [DOOR.x1, ROOM.x1, 0, ROOM.h], [DOOR.x0, DOOR.x1, DOOR.h, ROOM.h]]) {
+        const seg = new THREE.Mesh(new THREE.PlaneGeometry(a1 - a0, y1 - y0), wallMat(a1 - a0)); seg.position.set((a0 + a1) / 2, (y0 + y1) / 2, z); seg.rotation.y = ry; scene.add(seg);
+      }
+      for (const [a0, a1] of [[ROOM.x0, DOOR.x0], [DOOR.x1, ROOM.x1]]) {
+        const bw = a1 - a0, bx = (a0 + a1) / 2;
+        const base = new THREE.Mesh(new THREE.PlaneGeometry(bw, .1), new THREE.MeshStandardMaterial({ color: '#06080d' })); base.position.set(bx, .05, z); base.rotation.y = ry; base.translateZ(.01); scene.add(base);
+        const low = new THREE.Mesh(new THREE.PlaneGeometry(bw, .03), ledA); low.position.set(bx, .12, z); low.rotation.y = ry; low.translateZ(.015); scene.add(low);
+      }
+    } else {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, ROOM.h), wallMat(w)); m.position.set(x, ROOM.h / 2, z); m.rotation.y = ry; scene.add(m);
     const base = new THREE.Mesh(new THREE.PlaneGeometry(w, .1), new THREE.MeshStandardMaterial({ color: '#06080d' })); base.position.set(x, .05, z); base.rotation.y = ry; base.translateZ(.01); scene.add(base);
     const low = new THREE.Mesh(new THREE.PlaneGeometry(w, .03), ledA); low.position.set(x, .12, z); low.rotation.y = ry; low.translateZ(.015); scene.add(low);
+    }
     const hi = new THREE.Mesh(new THREE.PlaneGeometry(w, .035), ledB); hi.position.set(x, ROOM.h - .22, z); hi.rotation.y = ry; hi.translateZ(.015); scene.add(hi);
     const fg = new THREE.Mesh(new THREE.PlaneGeometry(w, .9), new THREE.MeshBasicMaterial({ map: stripTex, color: '#2f8cff', transparent: true, opacity: .16, depthWrite: false, blending: THREE.AdditiveBlending }));
     const fgp = new THREE.Group(); fgp.position.set(x, .006, z); fgp.rotation.y = ry; scene.add(fgp);
@@ -2488,10 +2590,10 @@ function drawLogo() {
   /* 観葉植物・社長室のドア */
   const potMat = new THREE.MeshStandardMaterial({ color: '#1c1f26', roughness: .5, metalness: .4 }), leafMat = new THREE.MeshStandardMaterial({ color: '#2f6b45', roughness: .8 });
   [[ROOM.x0 + .6, 6.4], [ROOM.x1 - .6, 6.4]].forEach(([x, z]) => { const pot = new THREE.Mesh(new THREE.CylinderGeometry(.28, .22, .5, 14), potMat); pot.position.set(x, .25, z); scene.add(pot); const lf = new THREE.Mesh(new THREE.IcosahedronGeometry(.55, 0), leafMat); lf.position.set(x, .95, z); scene.add(lf); addCol(x - .35, x + .35, z - .35, z + .35); });
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, .08), new THREE.MeshStandardMaterial({ color: '#2a211c', roughness: .5 })); door.position.set(3.8, 1.1, ROOM.z1 - .04); scene.add(door);
-  const dled = new THREE.Mesh(new THREE.BoxGeometry(1.3, .03, .03), ledA); dled.position.set(3.8, 2.25, ROOM.z1 - .06); scene.add(dled);
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.2, .08), new THREE.MeshStandardMaterial({ color: '#2a211c', roughness: .5 })); door.position.set(3.8, 1.1, ROOM.z1 - .04);
+  const dled = new THREE.Mesh(new THREE.BoxGeometry(1.3, .03, .03), ledA); dled.position.set(3.8, 2.27, ROOM.z1 - .06); scene.add(dled);
   const plate = canvasTex(256, 64); plate.ctx.fillStyle = '#c9a44a'; plate.ctx.fillRect(0, 0, 256, 64); plate.ctx.fillStyle = '#1e1405'; plate.ctx.font = '900 34px "Zen Kaku Gothic New", sans-serif'; plate.ctx.textAlign = 'center'; plate.ctx.fillText('社長室', 128, 45); plate.tex.needsUpdate = true;
-  const pm = new THREE.Mesh(new THREE.PlaneGeometry(.6, .15), new THREE.MeshBasicMaterial({ map: plate.tex })); pm.position.set(3.8, 1.95, ROOM.z1 - .1); pm.rotation.y = Math.PI; scene.add(pm);
+  const pm = new THREE.Mesh(new THREE.PlaneGeometry(.6, .15), new THREE.MeshBasicMaterial({ map: plate.tex })); pm.position.set(3.8, 2.46, ROOM.z1 - .02); pm.rotation.y = Math.PI; pm.userData.keepLit = true; scene.add(pm);
   addCol(ROOM.x0, ROOM.x1, ROOM.z0, -4.9);
 })();
 
@@ -2547,9 +2649,9 @@ function updateNote() {
   const g = noteTex.ctx; g.fillStyle = '#f4d35e'; g.fillRect(0, 0, 256, 256);
   g.fillStyle = 'rgba(0,0,0,.08)'; g.fillRect(0, 0, 256, 30);
   g.fillStyle = '#3a2e05'; g.textAlign = 'center';
-  g.font = '900 34px "Zen Kaku Gothic New", sans-serif'; g.fillText('本日ノルマ', 128, 92);
+  g.font = '900 34px "Zen Kaku Gothic New", sans-serif'; g.fillText(daysLeft(state.day) === 0 ? '本日〆ノルマ' : `第${termOf(state.day)}期ノルマ`, 128, 92);
   g.font = '700 38px "JetBrains Mono", monospace'; g.fillText(yen(state.quota), 128, 150);
-  g.font = '700 24px "Zen Kaku Gothic New", sans-serif'; g.fillText(`DAY ${state.day}  15:30まで`, 128, 204);
+  g.font = '700 24px "Zen Kaku Gothic New", sans-serif'; g.fillText(daysLeft(state.day) === 0 ? `DAY ${state.day}  15:30まで` : `〆 DAY ${deadlineOf(state.day)}（あと${daysLeft(state.day)}日）`, 128, 204, 236);
   g.textAlign = 'left'; noteTex.tex.needsUpdate = true;
 }
 /* 決算ホワイトボード（キャスター付き） */
@@ -2563,6 +2665,203 @@ const calBoard = surface(768, 460, drawCalBoard);
   addInteract(board, { kind: 'cal', max: 4.5 });
   addCol(-7.4, -5.1, -2.9, -1.7);
 })();
+
+/* =========================================================
+   社長室（ノルマ未達のとき）
+   ========================================================= */
+const BR_Z0 = ROOM.z1, BR_Z1 = ROOM.z1 + 4, BR_X0 = 2.1, BR_X1 = 5.5, BR_H = 3.0;
+scene.add(camera);
+const bossRoom = new THREE.Group(); bossRoom.userData.keepLit = true; bossRoom.visible = false; scene.add(bossRoom);
+const bossLight = new THREE.PointLight('#ffcf8a', 0, 8, 1.5); bossLight.position.set(3.8, 2.6, BR_Z0 + 2.2); bossRoom.add(bossLight);
+(function buildBossRoom() {
+  const carpet = canvasTex(256, 256), cg = carpet.ctx;
+  cg.fillStyle = '#4a0f16'; cg.fillRect(0, 0, 256, 256);
+  cg.strokeStyle = 'rgba(214,170,90,.35)'; cg.lineWidth = 6; cg.strokeRect(16, 16, 224, 224); cg.lineWidth = 2; cg.strokeRect(34, 34, 188, 188);
+  for (let i = 0; i < 3000; i++) { cg.fillStyle = `rgba(0,0,0,${Math.random() * .15})`; cg.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  carpet.tex.generateMipmaps = true; carpet.tex.minFilter = THREE.LinearMipmapLinearFilter; carpet.tex.needsUpdate = true;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(BR_X1 - BR_X0, BR_Z1 - BR_Z0), new THREE.MeshStandardMaterial({ map: carpet.tex, roughness: .9 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set((BR_X0 + BR_X1) / 2, .002, (BR_Z0 + BR_Z1) / 2); bossRoom.add(floor);
+  const ceil = new THREE.Mesh(new THREE.PlaneGeometry(BR_X1 - BR_X0, BR_Z1 - BR_Z0), new THREE.MeshStandardMaterial({ color: '#1c1410', roughness: 1 }));
+  ceil.rotation.x = Math.PI / 2; ceil.position.set((BR_X0 + BR_X1) / 2, BR_H, (BR_Z0 + BR_Z1) / 2); bossRoom.add(ceil);
+  const wood = canvasTex(256, 256), wg = wood.ctx;
+  wg.fillStyle = '#3b2616'; wg.fillRect(0, 0, 256, 256);
+  for (let x = 0; x < 256; x += 32) { wg.fillStyle = 'rgba(0,0,0,.25)'; wg.fillRect(x, 0, 2, 256); for (let k = 0; k < 40; k++) { wg.fillStyle = `rgba(255,220,170,${Math.random() * .05})`; wg.fillRect(x + 3 + Math.random() * 26, Math.random() * 256, 1, 20 + Math.random() * 60); } }
+  wood.tex.wrapS = wood.tex.wrapT = THREE.RepeatWrapping; wood.tex.generateMipmaps = true; wood.tex.minFilter = THREE.LinearMipmapLinearFilter; wood.tex.needsUpdate = true;
+  const wallM = new THREE.MeshStandardMaterial({ map: wood.tex, roughness: .7 });
+  const D = BR_Z1 - BR_Z0, Wd = BR_X1 - BR_X0;
+  const wl = new THREE.Mesh(new THREE.PlaneGeometry(D, BR_H), wallM); wl.position.set(BR_X0, BR_H / 2, (BR_Z0 + BR_Z1) / 2); wl.rotation.y = Math.PI / 2; bossRoom.add(wl);
+  const wr = new THREE.Mesh(new THREE.PlaneGeometry(D, BR_H), wallM); wr.position.set(BR_X1, BR_H / 2, (BR_Z0 + BR_Z1) / 2); wr.rotation.y = -Math.PI / 2; bossRoom.add(wr);
+  const wb = new THREE.Mesh(new THREE.PlaneGeometry(Wd, BR_H), wallM); wb.position.set((BR_X0 + BR_X1) / 2, BR_H / 2, BR_Z1); wb.rotation.y = Math.PI; bossRoom.add(wb);
+  /* 手前（ドア側）の内壁：ドアの穴をあけて3枚で */
+  for (const [x0, x1, y0, y1] of [[BR_X0, DOOR.x0, 0, BR_H], [DOOR.x1, BR_X1, 0, BR_H], [DOOR.x0, DOOR.x1, DOOR.h, BR_H]]) {
+    const seg = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, y1 - y0), wallM); seg.position.set((x0 + x1) / 2, (y0 + y1) / 2, BR_Z0 + .005); bossRoom.add(seg);
+  }
+  const mahog = new THREE.MeshStandardMaterial({ color: '#4a2412', roughness: .35, metalness: .1 });
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(1.9, .8, .85), mahog); desk.position.set(4.35, .4, BR_Z0 + 3.1); bossRoom.add(desk);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(2.0, .05, .95), new THREE.MeshStandardMaterial({ color: '#2a140a', roughness: .25, metalness: .2 })); top.position.set(4.35, .82, BR_Z0 + 3.1); bossRoom.add(top);
+  const chair = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.5, .25), new THREE.MeshStandardMaterial({ color: '#15100d', roughness: .5 })); chair.position.set(4.35, 1.0, BR_Z0 + 3.75); bossRoom.add(chair);
+  const plate = canvasTex(256, 64); plate.ctx.fillStyle = '#c9a44a'; plate.ctx.fillRect(0, 0, 256, 64); plate.ctx.fillStyle = '#1e1405'; plate.ctx.font = '900 36px "Zen Kaku Gothic New", sans-serif'; plate.ctx.textAlign = 'center'; plate.ctx.fillText('代表取締役', 128, 46); plate.tex.needsUpdate = true;
+  const np = new THREE.Mesh(new THREE.BoxGeometry(.5, .12, .06), [mahog, mahog, mahog, mahog, mahog, new THREE.MeshStandardMaterial({ map: plate.tex, roughness: .4 })]); np.position.set(4.35, .9, BR_Z0 + 2.72); np.rotation.y = Math.PI; bossRoom.add(np);
+  const kakejiku = canvasTex(256, 512), kg = kakejiku.ctx;
+  kg.fillStyle = '#efe6cf'; kg.fillRect(0, 0, 256, 512); kg.fillStyle = '#6b1a1a'; kg.fillRect(0, 0, 256, 18); kg.fillRect(0, 494, 256, 18);
+  kg.fillStyle = '#111'; kg.font = '900 92px "Zen Kaku Gothic New", serif'; kg.textAlign = 'center'; ['ノ', 'ル', 'マ', '必', '達'].forEach((ch, i) => kg.fillText(ch, 128, 110 + i * 84)); kakejiku.tex.needsUpdate = true;
+  const scroll = new THREE.Mesh(new THREE.PlaneGeometry(.6, 1.2), new THREE.MeshStandardMaterial({ map: kakejiku.tex, roughness: .8 })); scroll.position.set(3.1, 1.75, BR_Z1 - .02); scroll.rotation.y = Math.PI; bossRoom.add(scroll);
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(.35, 2.1, 1.6), mahog); shelf.position.set(BR_X0 + .2, 1.05, BR_Z0 + 2.4); bossRoom.add(shelf);
+  for (let r = 0; r < 4; r++) for (let k = 0; k < 7; k++) { const bk = new THREE.Mesh(new THREE.BoxGeometry(.2, .32, .1), new THREE.MeshStandardMaterial({ color: ['#6b1a1a', '#1a3a6b', '#2d5a2d', '#6b5a1a'][(r + k) % 4], roughness: .7 })); bk.position.set(BR_X0 + .4, .45 + r * .48, BR_Z0 + 1.8 + k * .19); bossRoom.add(bk); }
+  const shade = new THREE.Mesh(new THREE.CylinderGeometry(.25, .4, .3, 20, 1, true), new THREE.MeshStandardMaterial({ color: '#f3d9a8', emissive: '#ffb050', emissiveIntensity: .8, side: THREE.DoubleSide })); shade.position.set(3.8, 2.75, BR_Z0 + 2.2); bossRoom.add(shade);
+  addCol(4.35 - 1.0, 4.35 + 1.0, BR_Z0 + 2.65, BR_Z0 + 3.6);
+})();
+/* ドア（奥の壁の穴にはめる。蝶番は左側） */
+const doorPivot = new THREE.Group(); doorPivot.position.set(DOOR.x0, 0, ROOM.z1 - .035); doorPivot.userData.keepLit = true; scene.add(doorPivot);
+const bossDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(DOOR.x1 - DOOR.x0, DOOR.h - .01, .07), new THREE.MeshStandardMaterial({ color: '#3a2a20', roughness: .45 }));
+bossDoorMesh.position.set((DOOR.x1 - DOOR.x0) / 2, (DOOR.h - .01) / 2, 0); doorPivot.add(bossDoorMesh);
+const knob = new THREE.Mesh(new THREE.SphereGeometry(.045, 12, 8), new THREE.MeshStandardMaterial({ color: '#c9a44a', metalness: .8, roughness: .3 })); knob.position.set(DOOR.x1 - DOOR.x0 - .12, 1.05, -.06); doorPivot.add(knob);
+addInteract(bossDoorMesh, { kind: 'bossdoor', max: 2.6 });
+const spill = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), new THREE.MeshBasicMaterial({ map: glowTex, color: '#ffb35a', transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending }));
+spill.rotation.x = -Math.PI / 2; spill.position.set(DOOR.x, .012, ROOM.z1 - .45); spill.visible = false; spill.userData.keepLit = true; scene.add(spill);
+const underDoor = new THREE.Mesh(new THREE.PlaneGeometry(DOOR.x1 - DOOR.x0 - .05, .025), new THREE.MeshBasicMaterial({ color: '#ffc37a' })); underDoor.position.set(DOOR.x, .015, ROOM.z1 - .075); underDoor.rotation.y = Math.PI; underDoor.visible = false; underDoor.userData.keepLit = true; scene.add(underDoor);
+
+const doorGlow = new THREE.PointLight('#ffb35a', 0, 4, 2); doorGlow.visible = false; doorGlow.position.set(DOOR.x, .35, ROOM.z1 - .6); scene.add(doorGlow);
+const leakMat = new THREE.MeshBasicMaterial({ color: '#ffc37a', transparent: true, opacity: .85 });
+const leaks = [[DOOR.x0 + .01, DOOR.h / 2, .018, DOOR.h], [DOOR.x1 - .01, DOOR.h / 2, .018, DOOR.h], [DOOR.x, DOOR.h - .008, DOOR.x1 - DOOR.x0, .016]].map(([x, y, w, hh]) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, hh), leakMat); m.position.set(x, y, ROOM.z1 - .072); m.rotation.y = Math.PI; m.visible = false; m.userData.keepLit = true; scene.add(m); return m; });
+/* 真っ暗にする（全モニター・照明を落とす）／元に戻す */
+const DARK = { saved: null };
+function darken(on) {
+  if (on && !DARK.saved) {
+    const mats = new Map(), ems = new Map(), meshes = [], lights = [];
+    scene.traverse(o => {
+      if (o.isLight) { lights.push([o, o.intensity]); return; }
+      if (!o.isMesh) return;
+      for (let p = o; p; p = p.parent) if (p.userData && p.userData.keepLit) return;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        if (m && m.emissive && m.emissiveIntensity > 0 && !ems.has(m)) { ems.set(m, m.emissiveIntensity); m.emissiveIntensity = 0; }
+        if (!m || !m.isMeshBasicMaterial) continue;
+        if (m.blending === THREE.AdditiveBlending) { meshes.push([o, o.visible]); o.visible = false; continue; }
+        if (!mats.has(m)) { mats.set(m, m.color.getHex()); m.color.setHex(0x000000); }
+      }
+    });
+    for (const [l] of lights) { if (l === bossLight || l === doorGlow) continue; l.intensity = l.isAmbientLight ? .045 : l.isHemisphereLight ? .025 : 0; }
+    DARK.saved = { mats, ems, meshes, lights };
+  } else if (!on && DARK.saved) {
+    for (const [m, hex] of DARK.saved.mats) m.color.setHex(hex);
+    for (const [m, v] of DARK.saved.ems) m.emissiveIntensity = v;
+    for (const [o, v] of DARK.saved.meshes) o.visible = v;
+    for (const [l, i] of DARK.saved.lights) l.intensity = i;
+    DARK.saved = null;
+  }
+}
+/* 社長と拳 */
+const BQ = { active: false, stage: '', t: 0, door: 0, boss: null, fist: null, sent: false };
+const SHAKE = { t: 0, d: 1, a: 0 };
+function ensureBoss() {
+  if (BQ.boss) return;
+  const av = makeAvatar('#2a3148'); av.grp.scale.setScalar(1.25); av.grp.userData.keepLit = true;
+  av.sprite.visible = false;
+  /* 社長はヘッドセットもほっぺも無し：顔の皮膚・髪以外を外す */
+  av.head.children.forEach((c, i) => { if (i > 1) c.visible = false; });
+  const hairG = av.head.children[1]; hairG.material = new THREE.MeshStandardMaterial({ color: '#9aa0a8', roughness: .8 });
+  const dk = new THREE.MeshStandardMaterial({ color: '#15100c', roughness: .6 });
+  [-1, 1].forEach(s => { const br = new THREE.Mesh(new THREE.BoxGeometry(.11, .028, .03), dk); br.position.set(s * .085, .085, -.232); br.rotation.z = s * .38; av.head.add(br); });
+  const mouthB = new THREE.Mesh(new THREE.BoxGeometry(.09, .016, .02), dk); mouthB.position.set(0, -.105, -.225); mouthB.rotation.z = 0; av.head.add(mouthB);
+  const tieG = new THREE.MeshStandardMaterial({ color: '#b8892a', metalness: .4, roughness: .4 });
+  av.torso.traverse(o => { if (o.isMesh && o.material === AVM.dark && o.scale.x < .03) o.material = tieG; });
+  const shades = new THREE.Mesh(new THREE.BoxGeometry(.34, .075, .03), new THREE.MeshStandardMaterial({ color: '#050505', metalness: .6, roughness: .2 })); shades.position.set(0, .015, -.235); av.head.add(shades);
+  const stache = new THREE.Mesh(new THREE.BoxGeometry(.17, .035, .03), new THREE.MeshStandardMaterial({ color: '#1a1410' })); stache.position.set(0, -.05, -.235); av.head.add(stache);
+  av.eyes.forEach(e => { e.visible = false; });
+  BQ.boss = av;
+  const fist = new THREE.Group(); fist.userData.keepLit = true;
+  fist.add(mk(AVG.sph, AVM.skin, .16, .13, .17));
+  for (let k = 0; k < 4; k++) { const kn = mk(AVG.sph, AVM.skin, .055); kn.position.set(-.09 + k * .06, .045, .13); fist.add(kn); }
+  const th = mk(AVG.sph, AVM.skin, .05, .045, .09); th.position.set(-.12, -.04, .08); fist.add(th);
+  const cuff = mk(AVG.cyl, new THREE.MeshStandardMaterial({ color: '#23262f' }), .12, .3, .12); cuff.rotation.x = Math.PI / 2; cuff.position.z = -.25; fist.add(cuff);
+  fist.visible = false; camera.add(fist); BQ.fist = fist;
+  const fl = new THREE.PointLight('#ffe2b8', 0, 3, 2); fl.position.set(0, .25, .15); fl.visible = false; camera.add(fl); BQ.fistLight = fl;
+}
+function setSub(text) { const el = $('#bossSub'); if (!el) return; el.textContent = text || ''; el.hidden = !text; }
+function enterBossMode() {
+  if (BQ.active) return;
+  BQ.active = true; BQ.stage = ''; BQ.t = 0; BQ.sent = false;
+  if (LOCAL.panel === 'desk') standUp(false); else if (LOCAL.panel) closePanel(false);
+  ensureBoss();
+  darken(true);
+  bossRoom.visible = true; doorGlow.visible = true; BQ.fistLight.visible = true; bossLight.intensity = 1.9; doorGlow.intensity = .9; spill.visible = true; underDoor.visible = true; leaks.forEach(m => { m.visible = true; });
+  BQ.boss.grp.visible = true; BQ.boss.x = 3.8; BQ.boss.z = BR_Z0 + 2.6; BQ.boss.grp.position.set(3.8, 0, BR_Z0 + 2.6); BQ.boss.grp.rotation.y = 0;
+  document.body.classList.add('bossmode'); $('#bossHint').hidden = false;
+  $('#blackout').hidden = true; $('#blackout').className = ''; setSub('');
+  const bb = $('#boBtns'); if (bb) bb.innerHTML = '';
+  sfx('powerdown');
+}
+function exitBossMode() {
+  if (!BQ.active) return;
+  BQ.active = false; BQ.stage = ''; LOCAL.cut = false;
+  darken(false);
+  bossRoom.visible = false; doorGlow.visible = false; if (BQ.fistLight) BQ.fistLight.visible = false; bossLight.intensity = 0; doorGlow.intensity = 0; spill.visible = false; underDoor.visible = false; leaks.forEach(m => { m.visible = false; });
+  if (BQ.boss) BQ.boss.grp.visible = false; if (BQ.fist) BQ.fist.visible = false;
+  BQ.door = 0; doorPivot.rotation.y = 0;
+  document.body.classList.remove('bossmode', 'bosscut'); $('#bossHint').hidden = true; $('#blackout').hidden = true; setSub('');
+  resetView();
+}
+/* ドアを抜けて社長室へ入れるか（ドアが開いているときだけ） */
+function bossPass(x, z, r) {
+  if (!BQ.active || BQ.door < .75) return false;
+  if (z <= ROOM.z1 + r) return x > DOOR.x0 + .15 && x < DOOR.x1 - .15;
+  return z < BR_Z0 + 1.7 && x > BR_X0 + r && x < BR_X1 - r;
+}
+function bossTick(dt) {
+  if (!BQ.active) return;
+  const openWanted = state.bossDoor === 'open' && BQ.stage === '';
+  BQ.door += ((openWanted ? 1 : 0) - BQ.door) * Math.min(1, dt * (openWanted ? 1.8 : 14));
+  doorPivot.rotation.y = -1.75 * BQ.door;
+  spill.material.opacity = .55 + BQ.door * .45;
+  const boss = BQ.boss;
+  if (BQ.stage === '' && P.z > ROOM.z1 + .45) { BQ.stage = 'slam'; BQ.t = 0; BQ.slammed = false; BQ.sub2 = false; LOCAL.cut = true; keys.clear(); releaseLook(); $('#bossHint').hidden = true; document.body.classList.add('bosscut'); }
+  if (!BQ.stage) { idleBoss(dt); return; }
+  BQ.t += dt; const t = BQ.t;
+  /* カメラ（自分）は部屋の中央へ、社長の方を向く */
+  P.x += (3.8 - P.x) * Math.min(1, dt * 4); P.z += (BR_Z0 + 1.15 - P.z) * Math.min(1, dt * 4);
+  let dy = Math.PI - P.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.yaw += dy * Math.min(1, dt * 6); P.pitch += (.04 - P.pitch) * Math.min(1, dt * 6);
+  if (BQ.stage === 'slam') {
+    if (t > .12 && !BQ.slammed) { BQ.slammed = true; sfx('slam'); SHAKE.t = SHAKE.d = .45; SHAKE.a = .09; }
+    if (t > 1.1) { BQ.stage = 'approach'; BQ.t = 0; setSub('社長「……ノルマは、どうした」'); }
+    idleBoss(dt);
+  } else if (BQ.stage === 'approach') {
+    const tz = BR_Z0 + 2.3; boss.z += (tz - boss.z) * Math.min(1, dt * 1.6); boss.grp.position.set(3.8, 0, boss.z);
+    boss.phase += dt * 7; const sw = Math.sin(boss.phase) * .5;
+    boss.legs[0].rotation.x = sw; boss.legs[1].rotation.x = -sw; boss.arms[0].rotation.x = -sw * .6;
+    boss.arms[1].rotation.x = -.4 - Math.min(1, t / 1.4) * 1.2; boss.arms[1].rotation.z = .5 * Math.min(1, t / 1.4);
+    if (t > 1.5 && !BQ.sub2) { BQ.sub2 = true; setSub('社長「言い訳は聞かん！！」'); sfx('shout'); }
+    if (t > 2.3) { BQ.stage = 'punch'; BQ.t = 0; BQ.fist.visible = true; BQ.fistLight.intensity = 1.6; }
+  } else if (BQ.stage === 'punch') {
+    const k = Math.min(1, t / .32), e = k * k * k;
+    BQ.fist.position.set(.34 * (1 - e), -.16 * (1 - e) - .02, -1.25 + e * 1.1); BQ.fist.rotation.set(-.1, 0, -.7 * (1 - e));
+    boss.arms[1].rotation.x = -1.6 * (1 - k) - 1.2 * k;
+    if (t > .32) {
+      BQ.stage = 'black'; BQ.t = 0; setSub('');
+      sfx('punch'); SHAKE.t = SHAKE.d = .5; SHAKE.a = .25;
+      const bo = $('#blackout'); bo.hidden = false; bo.className = 'flash';
+      setTimeout(() => { bo.className = 'dark'; BQ.fist.visible = false; BQ.fistLight.intensity = 0; }, 90);
+    }
+  } else if (BQ.stage === 'black') {
+    if (t > 1.1 && !BQ.sent) {
+      BQ.sent = true; releaseLook();
+      request('ctl', { a: 'punched' });
+      if (isMulti()) {
+        $('#boText').textContent = '……';
+        setTimeout(() => { if (state.phase === 'boss') { $('#boText').textContent = '他のメンバーが社長室に来るのを待っています'; const bb = $('#boBtns'); if (bb) { bb.innerHTML = '<button class="btn" id="boSkip" type="button">全員を待たずに進める</button>'; $('#boSkip').onclick = () => request('ctl', { a: 'bossskip' }); } } }, 1600);
+      }
+    }
+  }
+}
+function idleBoss(dt) {
+  const b = BQ.boss; if (!b) return;
+  b.t += dt; b.torso.scale.y = 1 + Math.sin(b.t * 1.8) * .012; b.head.rotation.y = Math.sin(b.t * .5) * .25;
+  b.legs.forEach(l => { l.rotation.x = 0; }); b.arms[0].rotation.x = -.15; b.arms[1].rotation.x = -.15;
+}
+function applyShake(dt) {
+  if (SHAKE.t <= 0) return;
+  SHAKE.t -= dt; const a = SHAKE.a * Math.max(0, SHAKE.t / SHAKE.d);
+  camera.position.x += (Math.random() - .5) * a; camera.position.y += (Math.random() - .5) * a; camera.rotation.z += (Math.random() - .5) * a * .6;
+}
 
 /* ---- デスク ---- */
 const deskMat = new THREE.MeshStandardMaterial({ color: '#1a202c', roughness: .35, metalness: .45 });
@@ -3268,7 +3567,7 @@ function drawBigBoard(g) {
   const cash = state.cash, stock = stockValue(), a = cash + stock, q = state.quota, r = a / q, pnl = a - state.stats.dayStart;
   g.fillStyle = C.muted; g.font = `700 26px ${F_JP}`; g.fillText('総資産', 420, 56);
   g.fillStyle = r >= 1 ? C.ok : C.fg; g.font = `700 76px ${F_NUM}`; g.fillText(yen(a), 416, 146, 470);
-  g.fillStyle = C.muted; g.font = `700 26px ${F_JP}`; g.fillText('ノルマ', 920, 56);
+  g.fillStyle = daysLeft(state.day) === 0 ? C.up : C.muted; g.font = `700 26px ${F_JP}`; g.fillText(daysLeft(state.day) === 0 ? 'ノルマ（本日〆）' : `ノルマ（〆DAY ${deadlineOf(state.day)}）`, 920, 56, 330);
   g.fillStyle = C.note; g.font = `700 44px ${F_NUM}`; g.fillText(yen(q), 918, 106, 330);
   g.fillStyle = r >= 1 ? C.ok : C.up; g.font = `900 34px ${F_JP}`; g.fillText(r >= 1 ? `達成 ${sYen(a - q)}` : `あと ${yen(q - a)}`, 918, 150, 330);
   const bx = 36, by = 182, bw = W - 72, bh = 34, scale = 1.25 * q;
@@ -3348,6 +3647,7 @@ function spawnPoint() { const s = mySeat(); return s >= 0 ? [-2.4 + s * 1.6, 6.2
 function resetView() { if (SEAT.ci >= 0) return; const [x, z] = spawnPoint(); P.x = x; P.z = z; P.yaw = 0; P.pitch = -.02; }
 function blocked(x, z) {
   const r = .3;
+  if (z > ROOM.z1 - r && x > ROOM.x0 + r && x < ROOM.x1 - r && bossPass(x, z, r)) return false;
   if (x < ROOM.x0 + r || x > ROOM.x1 - r || z < ROOM.z0 + r || z > ROOM.z1 - r) return true;
   for (const c of colliders) if (!c.off && x > c.x0 - r && x < c.x1 + r && z > c.z0 - r && z < c.z1 + r) return true;
   return false;
@@ -3355,7 +3655,7 @@ function blocked(x, z) {
 function worldActive() { return state && $('#overlay').hidden && !LOCAL.panel && $('#chatBar').hidden && state.phase !== 'title'; }
 function seatedActive() { return state && $('#overlay').hidden && LOCAL.panel === 'desk' && $('#chatBar').hidden; }
 function movePlayer(dt) {
-  if (!worldActive()) return 0;
+  if (!worldActive() || LOCAL.cut) return 0;
   let f = 0, s = 0;
   if (keys.has('KeyW') || keys.has('ArrowUp')) f += 1;
   if (keys.has('KeyS') || keys.has('ArrowDown')) f -= 1;
@@ -3382,12 +3682,15 @@ function pickAt(nx, ny) {
 }
 function promptFor(t) {
   if (!t) return '';
+  if (state.phase === 'boss') return t.kind === 'bossdoor' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> ノックする' : '';
+  if (t.kind === 'bossdoor') return '';
   if (t.kind === 'st') { const c = state.cos[t.ci]; const u = deskUser(t.ci); return u ? `${stationLabel(t.ci)} ${esc(c.short)}：${esc(nameOf(u.by || u.peer))}が使用中` : `<kbd>E</kbd>座る　${stationLabel(t.ci)} ${esc(c.short)}`; }
   if (t.kind === 'front') { const c = state.cos[t.ci]; return powered(t.ci) ? `${esc(c.short)}（${stationLabel(t.ci)}）　<kbd>Q</kbd> 指さし` : ''; }
   return { news: '<kbd>E</kbd>ニュース', all: '<kbd>E</kbd>#株クラ', cal: '<kbd>E</kbd>決算予定', big: '<kbd>E</kbd>持ち株一覧' }[t.kind] || '';
 }
 function interact(t) {
   t = t || target; if (!t || !worldActive()) return;
+  if (state.phase === 'boss') { if (t.kind === 'bossdoor' && state.bossDoor !== 'open' && !BQ.stage) { sfx('knock'); request('ctl', { a: 'knock' }); } return; }
   if (t.kind === 'st') {
     if (!powered(t.ci)) return;
     const u = deskUser(t.ci); if (u) { logLine(`${stationLabel(t.ci)}は${nameOf(u.by || u.peer)}が使用中`, 'bad'); sfx('err'); return; }
@@ -3547,7 +3850,7 @@ canvas.addEventListener('wheel', e => {
   if (seatedActive() && SEAT.ci >= 0) { const h = deskHit(e); if (h && h.s === stations[SEAT.ci].info) { LOCAL.wacc = (LOCAL.wacc || 0) + e.deltaY; if (Math.abs(LOCAL.wacc) >= 50) { const d = Math.sign(LOCAL.wacc); LOCAL.wacc = 0; if (scrollInfo(d)) return; } else if (LOCAL.itab === 'co' || (LOCAL.itab === 'news' && LOCAL.art == null)) return; } }
   LOCAL.zoom = clamp(LOCAL.zoom * Math.exp(clamp(e.deltaY, -120, 120) * .002), .35, 1.15);
 }, { passive: false });
-function pingTarget() { if (target && (target.kind === 'st' || target.kind === 'front') && powered(target.ci)) sendPing(target.ci); }
+function pingTarget() { if (state.phase === 'boss') return; if (target && (target.kind === 'st' || target.kind === 'front') && powered(target.ci)) sendPing(target.ci); }
 if (isTouch) {
   $('#touchUI').hidden = false;
   const jz = $('#joy'), knob = $('#joyKnob');
@@ -3566,6 +3869,7 @@ if (isTouch) {
   };
   canvas.addEventListener('pointerup', tend); canvas.addEventListener('pointercancel', () => { lookTouch = null; });
   $('#tE').addEventListener('click', () => { if (LOCAL.panel) closePanel(false); else interact(); });
+  $('#tTeam').addEventListener('click', e => { if (state.phase === 'boss') e.stopImmediatePropagation(); }, true);
   $('#tTeam').addEventListener('click', () => { if (LOCAL.panel === 'team') closePanel(false); else openPanel('team'); });
 }
 function resize() {
@@ -3579,7 +3883,7 @@ function baseFov(seated) { const a = camera.aspect; if (seated) return a < .8 ? 
    メインループ
    ========================================================= */
 let last = performance.now(), acc = 0, demoAcc = 0, tickerAcc = 99, flashAcc = 0, tAll = 0, wasDanger = false, presAcc = 0, bob = 0, lastAct = '', seatBlend = 0, zoomCur = 1;
-const danger = () => state.phase === 'market' && state.minute >= 870 && assets() < state.quota;
+const danger = () => state.phase === 'market' && isDeadline(state.day) && state.minute >= 870 && assets() < state.quota;
 function currentAct() { if (!LOCAL.panel) return ''; return LOCAL.panel === 'desk' ? 'st:' + LOCAL.sel : LOCAL.panel; }
 const PERF = { draws: 0, fps: 0, n: 0, t0: 0, low: 0, high: 0 };
 function drawSurface(s) { s.ctx.setTransform(1, 0, 0, 1, 0, 0); s.draw(s.ctx, s); s.tex.needsUpdate = true; s.dirty = false; s.last = performance.now(); PERF.draws++; }
@@ -3594,7 +3898,7 @@ function perfTick(now) {
   if (!document.hidden) {
     if (PERF.fps < 45) { PERF.low++; PERF.high = 0; } else if (PERF.fps > 57) { PERF.high++; PERF.low = 0; } else { PERF.low = 0; PERF.high = 0; }
   }
-  const fe = $('#fps'); if (fe) { fe.textContent = `${Math.round(PERF.fps)} fps`; fe.className = 'fps' + (PERF.fps < 40 ? ' bad' : PERF.fps < 55 ? ' mid' : ''); }
+  const fe = $('#fps'); if (fe) { fe.textContent = `${Math.round(PERF.fps)} fps · ${GAME_VERSION}`; fe.className = 'fps' + (PERF.fps < 40 ? ' bad' : PERF.fps < 55 ? ' mid' : ''); }
 }
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now; tAll += dt;
@@ -3616,6 +3920,7 @@ function frame(now) {
   ambientTick();
   if (NET.role === 'host' && now - NET.lastFlush > 350) flush();
   const moved = movePlayer(dt); bob += moved * 7;
+  bossTick(dt);
   presAcc += dt;
   const act = currentAct();
   if (isMulti() && NET.office && (presAcc > .1 || act !== lastAct)) {
@@ -3660,6 +3965,7 @@ function frame(now) {
     let dyaw = syaw - cyaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw)); cyaw += dyaw * b; cpitch += (sp - cpitch) * b;
   }
   camera.position.set(cx, cy, cz); camera.rotation.set(cpitch, cyaw, 0);
+  applyShake(dt);
   zoomCur += (LOCAL.zoom - zoomCur) * Math.min(1, dt * 12);
   const fov = (baseFov(false) + (baseFov(true) - baseFov(false)) * seatBlend) * zoomCur;
   if (Math.abs(camera.fov - fov) > .05) { camera.fov = fov; camera.updateProjectionMatrix(); }
@@ -3680,8 +3986,8 @@ function frame(now) {
   const dg = danger();
   if (dg && !wasDanger) { sfx('alarm'); logLine('14:30 ノルマ未達', 'boss'); }
   wasDanger = dg;
-  if (dg || BIGFX.t > 0) { beamPivot.rotation.y += reduceMotion ? 0 : dt * 4.2; beam.material.opacity = .12; lampDome.material.color.set('#ff2a3c'); redLight.intensity = reduceMotion ? 1.4 : 1.4 + Math.sin(tAll * 8.4) * 1.1; }
-  else { beam.material.opacity = 0; lampDome.material.color.set('#4a1016'); redLight.intensity = 0; }
+  if (!BQ.active && (dg || BIGFX.t > 0)) { beamPivot.rotation.y += reduceMotion ? 0 : dt * 4.2; beam.material.opacity = .12; lampDome.material.color.set('#ff2a3c'); redLight.intensity = reduceMotion ? 1.4 : 1.4 + Math.sin(tAll * 8.4) * 1.1; }
+  else { beam.material.opacity = 0; lampDome.material.color.set(BQ.active ? '#000000' : '#4a1016'); redLight.intensity = 0; }
   if (phoneRing > 0) phoneRing -= dt;
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
@@ -3693,6 +3999,7 @@ let modalKind = null, modalKey = '';
 function closeModal() { $('#overlay').hidden = true; modalKind = null; updateLockHint(); }
 function renderPhase() {
   const p = state.phase;
+  if (p === 'boss') { closeModal(); enterBossMode(); } else if (p !== 'over') exitBossMode();
   if (p === 'market') { closeModal(); updateNote(); layoutSeats(); }
   else if (p === 'lobby') showModal('lobby');
   else if (p === 'report') showModal('report');
@@ -3725,12 +4032,13 @@ function showModal(kind) {
     const save = loadSave(), roomOK = !!NET.room, pending = !NET.roomReady;
     md.innerHTML = `
       <div class="eyebrow">カブトデスク証券　ディーリング部</div>
-      <div class="title-wrap"><h1 class="title">兜町ノルマ</h1><div class="postit"><small>本日ノルマ</small><span class="num">¥3,050,000</span></div></div>
-      <p class="lead">1デスク1社。座って売り買いし、SNSで相場を動かし、会社のお金で毎日のノルマを超える。</p>
+      <div class="title-wrap"><h1 class="title">兜町ノルマ<span class="ver">${GAME_VERSION}</span></h1><div class="postit"><small>第1期ノルマ（3日間）</small><span class="num">${yen(quotaFor(1))}</span></div></div>
+      <p class="lead">1デスク1社。座って売り買いし、SNSで相場を動かし、会社のお金で3日ごとのノルマを超える。</p>
       <ul class="rulelist">
-        <li><b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
+        <li>ノルマは<b>3営業日ごと</b>。期限の日の<b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
+        <li>毎日の引け後に購買部で装備をレベルアップできる。</li>
         <li>ニュースとSNSで株価が動く。SNSの予想が当たるとフォロワーが増え、投稿が効くようになる。</li>
-        <li><b>${GOAL_DAYS}営業日</b>生き残れば上場。</li>
+        <li><b>${GOAL_DAYS}営業日（${GOAL_DAYS / TERM}期）</b>生き残れば上場。</li>
       </ul>
       <div class="namerow"><label for="pName">プレイヤー名</label><input id="pName" maxlength="12" autocomplete="off" placeholder="名前（12文字まで）" value="${esc(LOCAL.pname)}"></div>
       <div class="modes">
@@ -3771,39 +4079,47 @@ function showModal(kind) {
       team = `<p class="h3">チームの成績（確定損益・手数料込み）</p><div style="overflow-x:auto"><table class="hist"><thead><tr><th style="text-align:left">メンバー</th><th>約定</th><th>確定損益</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     }
     let btns;
-    if (ok) btns = `<button class="btn primary" id="mNext" type="button">${r.day >= GOAL_DAYS && !state.cleared ? '上場審査の結果を見る' : '購買部へ'}</button>`;
+    if (r.mid) btns = `<button class="btn primary" id="mNext" type="button">購買部へ</button>`;
+    else if (ok) btns = `<button class="btn primary" id="mNext" type="button">${r.day >= GOAL_DAYS && !state.cleared ? '上場審査の結果を見る' : '購買部へ'}</button>`;
     else if (state.up.grace > 0) btns = `<button class="btn primary" id="mGrace" type="button">ノルマ猶予券を使う</button><button class="btn" id="mGiveup" type="button">諦める</button>`;
     else btns = `<button class="btn primary" id="mGiveup" type="button">社長室へ行く</button>`;
     md.innerHTML = `
       <div class="eyebrow">DAY ${r.day}　15:30　大引け</div>
-      <div class="verdict ${ok ? 'pass' : 'fail'}">${ok ? 'ノルマ達成' : 'ノルマ未達'}</div>
+      ${r.mid ? `<div class="verdict mid">途中経過</div><p class="lead">第${r.term}期のノルマ判定は <b>DAY ${r.deadline} の15:30</b>（あと${r.deadline - r.day}営業日）。${ok ? '今の時点でノルマは超えている。' : `今のままだと ${yen(r.quota - r.assets)} 足りない。`}</p>` : `<div class="verdict ${ok ? 'pass' : 'fail'}">${ok ? `第${r.term}期 ノルマ達成` : `第${r.term}期 ノルマ未達`}</div>${ok ? `<p class="lead">次は第${r.term + 1}期（DAY ${r.day + 1}〜${r.day + TERM}）。ノルマは <b>${yen(quotaFor(r.day + 1))}</b>。</p>` : ''}`}
       <div class="kv">
         <div><span>会社の現金</span><span>${r.cash < 0 ? '借入 ' + yen(-r.cash) : yen(r.cash)}</span></div>
         <div><span>持ち株の価値</span><span>${yen(r.stock)}</span></div>
         <div><span>総資産</span><span>${yen(r.assets)}</span></div>
         <div><span>ノルマ</span><span>${yen(r.quota)}</span></div>
-        <div><span>差額</span><span class="${ok ? 'up' : 'down'}">${sYen(r.assets - r.quota)}</span></div>
+        <div><span>${r.mid ? 'いまの差額' : '差額'}</span><span class="${ok ? 'up' : 'down'}">${sYen(r.assets - r.quota)}</span></div>
         <div><span>本日損益</span><span class="${r.pnl >= 0 ? 'up' : 'down'}">${sYen(r.pnl)}</span></div>
       </div>
       <p class="owned">約定 ${r.trades}回・手数料と金利 ${yen(r.fees + r.charge)}</p>
       ${team}${after}${carry}
       <div class="btns">${btns}</div>`;
     fillNames(md);
-    const nx = $('#mNext'); if (nx) nx.onclick = () => request('ctl', { a: r.day >= GOAL_DAYS && !state.cleared ? 'clear' : 'shop' });
+    const nx = $('#mNext'); if (nx) nx.onclick = () => request('ctl', { a: !r.mid && r.day >= GOAL_DAYS && !state.cleared ? 'clear' : 'shop' });
     const gr = $('#mGrace'); if (gr) gr.onclick = () => request('ctl', { a: 'grace' });
     const gu = $('#mGiveup'); if (gu) gu.onclick = () => request('ctl', { a: 'over' });
   } else if (kind === 'shop') {
-    const nextQuota = quotaFor(state.day + 1);
-    const avail = UPGRADES.filter(u => u.ok(state)), owned = UPGRADES.filter(u => u.own(state)).map(u => u.name);
+    const nd = state.day + 1, nextQuota = quotaFor(nd), newTerm = isDeadline(state.day), aNow = assets();
+    const pips = (lv, max) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</span>`;
+    const card = u => {
+      const lv = u.lv(state), can = upCanLevel(u, state), price = can ? upPrice(u, state) : 0, poor = can && state.cash < price;
+      const cur = u.consumable ? (lv ? '所持中（1枚）' : '未所持') : lv ? `Lv${lv}：${u.lvs[lv - 1].eff}` : '未導入';
+      const nxt = !can ? (u.consumable ? '' : '最大レベル') : u.consumable ? u.eff : `<b>Lv${lv + 1}</b>　${u.lvs[lv].eff}`;
+      const after = aNow - price, warn = can && !poor && aNow >= nextQuota && after < nextQuota ? `<small class="warn">買うとノルマ割れ（あと ${yen(nextQuota - after)}）</small>` : '';
+      const label = !can ? (u.consumable ? '所持中' : 'MAX') : poor ? '現金不足' : u.consumable ? '購入' : lv === 0 ? '導入' : `Lv${lv + 1}に上げる`;
+      return `<div class="item${can ? '' : ' maxed'}"><h4><span>${esc(u.name)}</span>${u.consumable ? '' : pips(lv, u.max)}</h4><p class="cur">${cur}</p>${nxt ? `<p class="nx">${nxt}</p>` : ''}${warn}<div class="row"><span class="price">${can ? yen(price) : ''}</span><button class="btn" type="button" data-buy="${u.id}" ${!can || poor ? 'disabled' : ''}>${label}</button></div></div>`;
+    };
     const k = myKey(), meReady = !!state.ready[k];
     const members = (state.players || []).filter(p => p.seat >= 0), nReady = members.filter(p => state.ready[p.by || p.peer]).length;
     md.innerHTML = `
       <div class="eyebrow">DAY ${state.day} 引け後　購買部</div>
-      <h2>装備を整える</h2>
-      <div class="kv"><div><span>会社の現金（買い物に使える）</span><span>${yen(state.cash)}</span></div><div><span>総資産</span><span>${yen(assets())}</span></div><div><span>明日のノルマ</span><span style="color:var(--amber)">${yen(nextQuota)}</span></div></div>
+      <h2>装備をレベルアップ</h2>
+      <div class="kv"><div><span>会社の現金（買い物に使える）</span><span>${yen(state.cash)}</span></div><div><span>総資産</span><span>${yen(assets())}</span></div><div><span>${newTerm ? '次の' : ''}第${termOf(nd)}期ノルマ（〆DAY ${deadlineOf(nd)}）</span><span style="color:var(--amber)">${yen(nextQuota)}</span></div></div>
       <p class="owned">買い物は会社の現金から払います。払った分だけ総資産も減ります。${isMulti() ? '誰が買っても全員の装備になります。' : ''}</p>
-      <div class="shop">${avail.map(u => `<div class="item"><h4>${esc(u.name)}</h4><p>${esc(u.desc)}</p><div class="row"><span class="price">${yen(u.price)}</span><button class="btn" type="button" data-buy="${u.id}" ${state.cash < u.price ? 'disabled' : ''}>${state.cash < u.price ? '現金不足' : '購入'}</button></div></div>`).join('') || '<p class="owned">買えるものはもうありません。</p>'}</div>
-      ${owned.length ? `<p class="owned">導入済み：${owned.map(esc).join('、')}</p>` : ''}
+      <div class="shop">${UPGRADES.map(card).join('')}</div>
       ${isMulti() ? seatsHTML() : ''}
       <div class="readybar">${isMulti() ? `<button class="btn ${meReady ? '' : 'primary'}" id="mReady" type="button">${meReady ? '準備完了を取り消す' : '準備完了'}</button><span>準備完了 <span class="num">${nReady}/${members.length}</span>　全員そろうと翌営業日が始まります</span>${NET.role === 'host' ? '<button class="btn" id="mForce" type="button">全員を待たずに開始</button>' : ''}` : `<button class="btn primary" id="mReady" type="button">翌営業日へ（DAY ${state.day + 1}）</button>`}</div>`;
     fillNames(md);
@@ -3812,14 +4128,14 @@ function showModal(kind) {
     if ($('#mForce')) $('#mForce').onclick = () => request('ctl', { a: 'force' });
   } else if (kind === 'clear') {
     md.innerHTML = `<div class="eyebrow">DAY ${GOAL_DAYS}　上場審査</div><div class="verdict pass">上場承認</div>
-      <p class="lead">${GOAL_DAYS}営業日すべてのノルマを突破。カブトデスク証券の株式上場が決まった。総資産は ${yen(assets())}、元手の ${(assets() / START_CASH).toFixed(2)} 倍。</p>
+      <p class="lead">${GOAL_DAYS}営業日・${GOAL_DAYS / TERM}期すべてのノルマを突破。カブトデスク証券の株式上場が決まった。総資産は ${yen(assets())}、元手の ${(assets() / START_CASH).toFixed(2)} 倍。</p>
       <p class="owned">ここから先はエンドレス。ノルマは上がり続けます。</p>
       <div class="btns"><button class="btn primary" id="mCont" type="button">続けて稼ぐ（購買部へ）</button></div>`;
     $('#mCont').onclick = () => request('ctl', { a: 'shop' });
   } else if (kind === 'over') {
-    const rows = state.stats.history.map(h => `<tr><td>${h.day}</td><td>${yen(h.assets)}</td><td>${yen(h.quota)}</td><td class="${h.pass ? 'up' : 'down'}">${h.pass ? '達成' : '未達'}</td></tr>`).join('');
+    const rows = state.stats.history.map(h => `<tr><td>${h.day}</td><td>${yen(h.assets)}</td><td>${yen(h.quota)}</td><td class="${h.pass == null ? '' : h.pass ? 'up' : 'down'}">${h.pass == null ? '途中' : h.pass ? '達成' : '未達'}</td></tr>`).join('');
     md.innerHTML = `<div class="eyebrow">社長室</div><div class="verdict fail">${isMulti() ? '全員クビ' : 'クビ'}</div>
-      <p class="lead">${esc(state.overReason || '')} 生き残ったのは ${state.stats.history.filter(h => h.pass).length} 営業日。最高総資産は ${yen(state.stats.best)}。</p>
+      <p class="lead">${esc(state.overReason || '')} 生き残ったのは ${state.stats.history.filter(h => h.pass !== false).length} 営業日（突破した期 ${state.stats.history.filter(h => h.pass === true).length}）。最高総資産は ${yen(state.stats.best)}。</p>
       ${rows ? `<div style="overflow-x:auto"><table class="hist"><thead><tr><th>DAY</th><th>総資産</th><th>ノルマ</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
       <div class="btns"><button class="btn primary" id="mRetry" type="button">${isMulti() ? '同じメンバーでもう一度' : 'もう一度'}</button><button class="btn" id="mTitle" type="button">タイトルへ</button></div>`;
     $('#mRetry').onclick = () => request('ctl', { a: 'restart' });
@@ -3947,6 +4263,7 @@ document.addEventListener('keydown', e => {
   keys.add(e.code);
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
+  if (state.phase === 'boss') { if (k === 'e') interact(); return; }
   if (k === 'e') interact();
   else if (k === 'n') openNewsItem(LAST_NEWS);
   else if (k === 'q') pingTarget();
@@ -3985,7 +4302,7 @@ function start(data) {
   if (data.role === 'client' && data.code) {
     newGame('solo'); afterStateReplaced(); attract = false;
     resume = { role: 'client', code: data.code }; showModal('joining');
-  } else if (data.state && data.state.v === 6) {
+  } else if (data.state && data.state.v === 7) {
     state = data.state; if (typeof data.soundOn === 'boolean') soundOn = data.soundOn;
     if (data.local) { LOCAL.sel = data.local.sel | 0; LOCAL.qty = data.local.qty || 100; }
     afterStateReplaced(); attract = false;
