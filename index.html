@@ -316,6 +316,14 @@ body.bosscut #lockHint,body.bosscut #cross,body.bosscut #prompt,body.bosscut .fp
 .cal{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .cal li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--line-2);font-size:13px}
 .cal.sched li{border-left:4px solid transparent}
+.sessbar{display:grid;grid-template-columns:5fr 2fr 6fr;gap:6px;margin-bottom:6px}
+.sessbar .ss{border-radius:8px;padding:8px 10px;background:#1b2a44;display:flex;flex-direction:column;gap:2px}
+.sessbar .ss b{font-size:14px} .sessbar .ss span{font-family:var(--f-num);font-size:12px;color:var(--muted)}
+.sessbar .ss.lunch{background:repeating-linear-gradient(135deg,rgba(194,124,14,.22) 0 6px,rgba(194,124,14,.1) 6px 12px)}
+.sessbar .ss.on{outline:2px solid var(--sns);background-color:#1d4f96} .sessbar .ss.on span{color:#dbe8ff}
+.sessbar .ss.past{opacity:.5}
+.nowl{font-size:12.5px;color:var(--muted);margin:0 0 6px}
+#fCal .cal li small{text-align:right;line-height:1.5}
 .cal.sched li > span:nth-child(2){flex:1;min-width:0}
 .cal.sched li .num{min-width:92px}
 .cal.sched li.k-open{border-left-color:var(--ok)} .cal.sched li.k-close{border-left-color:var(--up)} .cal.sched li.k-earn{border-left-color:#c084fc} .cal.sched li.k-pre{border-left-color:var(--muted)}
@@ -850,7 +858,7 @@ function limitWidth(p) { for (const [u, w] of LIMIT_TABLE) if (p < u) return w; 
 const T_PRE = 510, T_AM = 540, T_AM_END = 690, T_PM = 750, T_CLOSE = 930;
 const isOpen = m => (m >= T_AM && m < T_AM_END) || (m >= T_PM && m < T_CLOSE);
 const isLunch = m => m >= T_AM_END && m < T_PM;
-function sessionOf(m) { return m < T_AM ? ['寄り前', ''] : m < T_AM_END ? ['前場', 'open'] : m < T_PM ? ['昼休み', 'lunch'] : m < T_CLOSE ? ['後場', 'open'] : ['大引け', '']; }
+function sessionOf(m) { return m < T_AM ? ['開始前', ''] : m < T_AM_END ? ['前半戦', 'open'] : m < T_PM ? ['昼休み', 'lunch'] : m < T_CLOSE ? ['後半戦', 'open'] : ['取引終了', '']; }
 
 /* =========================================================
    ゲームデータ
@@ -1567,7 +1575,7 @@ const BAIT = {
 };
 function newsBody(e) {
   if (e.body) return e.body;
-  const when = e.t >= T_CLOSE && e.tag === '決算' ? '　※取引終了後の発表のため、株価に反映されるのは翌営業日の朝。' : e.t === T_AM_END ? '　※昼休み中の発表のため、株価に反映されるのは後場（12:30）から。' : '';
+  const when = e.t >= T_CLOSE && e.tag === '決算' ? '　※取引終了後の発表のため、株価に反映されるのは翌営業日の朝。' : e.t === T_AM_END ? '　※昼休み中の発表のため、株価に反映されるのは後半戦（12:30〜）から。' : '';
   if (e.type === 'macro') {
     const F = FACT[e.f], up = [], dn = [];
     for (const s in F.sens) { if (s === 'all') continue; (F.sens[s] * e.dir > 0 ? up : dn).push(SECT[s]); }
@@ -1780,18 +1788,18 @@ function recordMinute(m, prices, vols) {
 function openAuction(m) {
   for (const c of state.cos) { if (c.gap) { c.fair *= Math.exp(c.gap); c.gap = 0; } }
   fx({ t: 'sfx', k: 'bell' });
-  fx({ t: 'toast', text: m === T_AM ? '寄り付き。前場の取引開始（11:30まで）' : '後場寄り。取引再開（15:30の大引けまで）' });
+  fx({ t: 'toast', text: m === T_AM ? '前半戦スタート（9:00〜11:30）' : '後半戦スタート（12:30〜15:30）' });
 }
 function step() {
   const m = ++state.minute;
   if (m === T_AM || m === T_PM) openAuction(m);
   processItems(m); postTick(m); contraTick(m); mailTick(m);
   if (isOpen(m)) priceSim(); else if (NET.role === 'host') NET.out.push(['t', m]);
-  if (m === T_AM_END) { fx({ t: 'toast', text: '前引け。12:30まで昼休み。取引できません（材料は後場寄りで反映）' }); fx({ t: 'sfx', k: 'bell' }); }
+  if (m === T_AM_END) { fx({ t: 'toast', text: '前半戦終了。12:30まで昼休み（取引できません。材料は後半戦の開始で反映）' }); fx({ t: 'sfx', k: 'bell' }); }
   if (m === T_AM || m === T_AM_END || m === T_PM || m === T_CLOSE) { calBoard.dirty = true; if (LOCAL.panel === 'cal') renderCalendar(); }
-  if (m === T_AM_END - 10) fx({ t: 'toast', text: 'あと10分で前引け（11:30）。昼休み中は12:30まで取引できません' });
-  if (m === T_CLOSE - 10) fx({ t: 'toast', text: isDeadline(state.day) ? 'あと10分で大引け（15:30）。今日がノルマの期限です' : 'あと10分で大引け（15:30）', cls: isDeadline(state.day) ? 'boss' : '' });
-  if (m === T_AM - 10) fx({ t: 'toast', text: 'あと10分で寄り付き（9:00）' });
+  if (m === T_AM_END - 10) fx({ t: 'toast', text: 'あと10分で前半戦終了（11:30）。昼休み中は12:30まで取引できません' });
+  if (m === T_CLOSE - 10) fx({ t: 'toast', text: isDeadline(state.day) ? 'あと10分で取引終了（15:30）。今日がノルマの期限です' : 'あと10分で取引終了（15:30）', cls: isDeadline(state.day) ? 'boss' : '' });
+  if (m === T_AM - 10) fx({ t: 'toast', text: 'あと10分で前半戦スタート（9:00）' });
   if (isOpen(m) && m % 30 === 0 && m >= 570) mikoPost();
   if (state.up.margin && assets() <= 0) { forcedLiquidation(); return; }
   if (m >= T_CLOSE) endDay();
@@ -2202,7 +2210,7 @@ function rulesHTML() {
     <li>安いときに買って、高くなってから売ると、その<b>差がもうけ</b>になる。下がってから売ると損。</li>
     <li>お金は<b>会社の口座ひとつ</b>。買うと会社の現金が減り、売ると戻る。${isMulti() ? '持ち株も会社でひとつ。誰が買った株でも、誰でも売れる。' : ''}</li>
     <li>ノルマは<b>3営業日ごと</b>。期限の日の15:30に<b>現金＋持ち株の価値（総資産）</b>で判定。持っているだけでも、株価が上がれば総資産が増える。</li>
-    <li>1日の流れ：<b>8:30 寄り前</b> → <b>9:00–11:30 前場</b> → <b>11:30–12:30 昼休み</b> → <b>12:30–15:30 後場</b> → 15:30 大引け。取引できるのは前場と後場だけ。昼休みや夜のニュースは、次の取引開始の瞬間に株価へ反映される。</li>
+    <li>1日の流れ：<b>9:00〜11:30 前半戦</b> → <b>11:30〜12:30 昼休み</b> → <b>12:30〜15:30 後半戦</b> → 15:30 取引終了。取引できるのは前半戦と後半戦だけ。昼休みや夜のニュースは、次の取引開始の瞬間に株価へ反映される。</li>
     <li>株は<b>100株単位</b>で売り買い。手数料は取引額の0.1%（最低¥100）。</li>
     <li>1日に動ける幅には上限がある（ストップ高・ストップ安）。張り付くと売買が成立しない。</li>
     <li>SNSには本物のリークもデマもある。自分で投稿して株価を動かすこともできるが、やりすぎると監視委員会から罰金。</li>
@@ -2210,11 +2218,11 @@ function rulesHTML() {
 }
 function renderCalendar() {
   const el = $('#fCal'); if (!el) return;
-  const rows = schedRows(), cur = schedNow(rows);
-  el.innerHTML = `<ul class="cal sched">${rows.map((r, i) => {
-    const past = i < cur && !(r.k === 'lunch' && state.minute < r.to), gs = r.k === 'earn' && !r.x.done && earnGuess(r.x);
-    return `<li class="k-${r.k}${past ? ' done' : ''}${i === cur ? ' now' : ''}"><span class="num">${hhmm(r.t)}${r.k === 'lunch' ? `〜${hhmm(r.to)}` : ''}</span><span><b>${esc(r.a)}</b>${gs ? `<em class="eg" style="color:${gs[1]}">${gs[2]} ${gs[0]}</em>` : ''}</span><small>${r.k === 'earn' && r.x.done ? '発表済' : esc(r.b)}</small></li>`;
-  }).join('')}</ul>`;
+  const m = state.minute, cal = (state.calendar || []).slice().sort((p, q) => p.t - q.t);
+  const sess = SESS.map(([a, b, lb, k]) => `<div class="ss ${k}${m >= a && m < b ? ' on' : m >= b ? ' past' : ''}"><b>${lb}</b><span>${hhmm(a)}〜${hhmm(b)}</span></div>`).join('');
+  const rows = cal.map(x => { const c = state.cos[x.ci], [mv, why, mc] = earnMove(x), gs = !x.done && earnGuess(x);
+    return `<li class="${x.done ? 'done' : ''}"><span class="num">${hhmm(x.t)}</span><span><b>${esc(c.name)}</b>${gs ? `<em class="eg" style="color:${gs[1]}">${gs[2]} ${gs[0]}</em>` : ''}</span><small>${x.done ? '発表済' : `<span style="color:${mc};font-weight:700">${esc(mv)}</span><br>${esc(why)}${x.t > m ? `・あと${x.t - m}分` : ''}`}</small></li>`; }).join('');
+  el.innerHTML = `<div class="sessbar">${sess}</div><p class="nowl">いま：${esc(nowLabel())}</p><p class="h3">決算発表</p><ul class="cal">${rows || '<li>今日は決算発表なし</li>'}</ul>`;
 }
 function renderChips() {
   const el = $('#teamChips');
@@ -2780,7 +2788,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v30 P2P';
+const GAME_VERSION = 'v31 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -3602,6 +3610,9 @@ const MAILERS = {
     tip: (c, d, w) => ['…', `${c.code} ${d > 0 ? '上' : '下'} ${w} 以上`] },
 };
 const MAIL_IDS = Object.keys(MAILERS);
+MAILERS.takumi.chat.push(['【再送】重要なお知らせ！！！', '先ほどのメールはご覧いただけましたか！？！？チャンスは今だけです！！！🔥🔥'], ['【緊急】あなただけに特別公開', '会員の皆様、昨日も爆益でした！！！あなたも今すぐ！！！💰'], ['返信お待ちしております！！！', '返信がないのでもう一度送ります！！！爆益サロンへようこそ！！！'], ['🚀🚀🚀', '🚀🚀🚀 月まで行きます 🚀🚀🚀 詳細は折り返し！！！']);
+MAILERS.gwp.chat.push(['【重要】最終のご案内', 'これが最後のご案内となります。本日中にお手続きいただけない場合、特別枠が失効いたします。'], ['【お知らせ】AI予測の精度が向上しました', '弊社AIの的中率が99.1%に向上いたしました。ぜひこの機会に。'], ['【再送】お手続きのお願い', '先日お送りしたご案内について、まだお手続きが確認できておりません。']);
+MAILERS.miki.chat.push(['ねえ〜無視しないで💦', '返事まだ〜？さみしいよ〜🥺'], ['見て見て〜', '新しいネイルした〜💅 かわいい？？'], ['ちょっと相談〜', '実はいい投資話があるんだけど…今度会えない？💕'], ['おやすみ〜', 'もう寝る？わたしはまだ起きてるよ〜🌙']);
 const MAIL_ADDR = { hayase: 'r.hayase@aoba-sec.co.jp', okochi: 'm.okochi@kanreki-mail.jp', minobe: 'minobe@kabuto-shimbun.jp', kiriya: 'kiriya.kengyo@freemail.ne.jp', takumi: 'god_takumi_777@bakueki-salon.xyz', gwp: 'info@global-wealth-partners.biz', miki: 'miki.love.2525@kawaii-mail.xyz', sennin: 'kabu-sennin@yamaoku.or.jp', mrx: 'x@0x0.invalid' };
 /* プレイヤーのアドレス：席番号ごとに別 */
 function addrOf(key) { return `dealer${Math.max(0, seatOfKey(key)) + 1}@kabutodesk.co.jp`; }
@@ -3632,9 +3643,9 @@ function findLeakEvent(m, lo, hi) {
   return cand.length ? pick(cand) : null;
 }
 function whenLabel(t, lv) {
-  if (t < T_AM) return 'この後の寄り付き';
+  if (t < T_AM) return '9:00の取引開始';
   if (lv >= 3) return `${Math.floor(t / 60)}時台`;
-  if (lv === 2) return t < T_AM_END ? '今日の前場' : '今日の後場';
+  if (lv === 2) return t < T_AM_END ? '今日の前半戦' : '今日の後半戦';
   return '近いうちに';
 }
 function pushMail(key, mb, mail) {
@@ -3642,7 +3653,8 @@ function pushMail(key, mb, mail) {
   /* 45分以上返事をしないまま次のメールが来ると少し冷める（前のメールには返信できなくなる） */
   const prev = mb.box.filter(x => x.s === mail.s && x.ans == null && (x.k === 'intro' || x.k === 'chat') && x.t < mail.t - 45);
   if (prev.length && MAILERS[mail.s].type !== 'scam') { const cc = mb.c[mail.s]; cc.rel = Math.max(0, cc.rel - 3 * prev.length); prev.forEach(x => { x.ans = -1; }); }
-  mb.box.push(mail); if (mb.box.length > 16) mb.box.splice(0, mb.box.length - 16);
+  mb.box.push(mail);
+  while (mb.box.length > 40) { const i = mb.box.findIndex(x => MAILERS[x.s] && MAILERS[x.s].type === 'scam'); mb.box.splice(i >= 0 && i < mb.box.length - 3 ? i : 0, 1); }
 }
 function genMail(key) {
   const mb = mailBoxOf(key), m = state.minute;
@@ -3651,7 +3663,7 @@ function genMail(key) {
   const unmet = open.filter(s => !mb.c[s]);
   let s;
   if (unmet.length && (Math.random() < .55 || open.length === unmet.length)) s = pick(unmet);
-  else { const met = open.filter(x => mb.c[x]); let tot = 0; const w = met.map(x => { const v = MAILERS[x].type === 'scam' ? 30 : 15 + relOf(mb, x); tot += v; return v; }); let r = Math.random() * tot; s = met[0]; for (let i = 0; i < met.length; i++) { r -= w[i]; if (r <= 0) { s = met[i]; break; } } }
+  else { const met = open.filter(x => mb.c[x]); let tot = 0; const w = met.map(x => { const v = MAILERS[x].type === 'scam' ? 6 : 15 + relOf(mb, x); tot += v; return v; }); let r = Math.random() * tot; s = met[0]; for (let i = 0; i < met.length; i++) { r -= w[i]; if (r <= 0) { s = met[i]; break; } } }
   const P = MAILERS[s];
   if (!mb.c[s]) { mb.c[s] = { rel: 0, blk: false }; pushMail(key, mb, { s, k: 'intro', v: 0 }); return; }
   const rel = relOf(mb, s), roll = Math.random();
@@ -3672,13 +3684,30 @@ function genMail(key) {
   }
   sendMail(key, { s, k: 'chat', v: ri(0, P.chat.length - 1) });
 }
+function spamMail(key, s) {
+  const mb = mailBoxOf(key), P = MAILERS[s];
+  if (!mb.c[s]) { mb.c[s] = { rel: 0, blk: false }; pushMail(key, mb, { s, k: 'intro', v: 0 }); return; }
+  const r = Math.random();
+  if (P.ask && r < .2 && !mb.box.some(x => x.s === s && x.k === 'ask' && x.ans == null)) { pushMail(key, mb, { s, k: 'ask', v: 0 }); return; }
+  if (r < .55) { const pool = state.cos.filter(c => powered(c.i)); if (pool.length) { sendMail(key, { s, k: 'tip', v: 0, ci: pick(pool).i, d: Math.random() < .5 ? 1 : -1, w: whenLabel(state.minute + ri(20, 90), 2), lv: 2, eid: -1 }); return; } }
+  sendMail(key, { s, k: 'chat', v: ri(0, P.chat.length - 1) });
+}
 function mailTick(m) {
   if (!runsSim() || state.phase !== 'market') return;
   let changed = false;
   for (const key of mailMembers()) {
     const mb = mailBoxOf(key);
-    if (!mb.next || mb.next < T_PRE || mb.next > T_CLOSE + 60) mb.next = Math.max(m + 2, T_PRE + ri(4, 12));
+    if (!mb.next || mb.nd !== state.day || mb.next < T_PRE || mb.next > T_CLOSE + 60) { mb.nd = state.day; mb.next = Math.max(m + 2, T_PRE + ri(4, 12)); }
     if (m >= mb.next) { genMail(key); mb.next = m + ri(18, 38); changed = true; }
+    /* 迷惑メール：ブロックしない限り、業者ごとに35〜65分おきに送りつけてくる（3社で20分に1通ほど） */
+    if ((state.up.mailsec | 0) < 9) {
+      mb.sp = mb.sp || {};
+      for (const s of MAIL_IDS) {
+        if (MAILERS[s].type !== 'scam' || (mb.c[s] && mb.c[s].blk)) continue;
+        let sp = mb.sp[s]; if (!sp || sp.d !== state.day) sp = mb.sp[s] = { d: state.day, t: m + ri(5, 40) };
+        if (m >= sp.t) { spamMail(key, s); sp.t = m + ri(35, 65); changed = true; }
+      }
+    }
   }
   if (changed) hudDirty = true;
 }
@@ -4252,6 +4281,17 @@ function drawBigBoard(g) {
   if (rows.length > maxRows) { g.fillStyle = C.muted; g.font = `500 22px ${F_JP}`; g.fillText(`ほか ${rows.length - maxRows} 件`, 36, 396 + maxRows * 54); }
   drawBigAlert(g, W);
 }
+/* ---- ホワイトボード：主役は決算発表。上に取引時間（前半戦・昼休み・後半戦）を小さく ---- */
+const SESS = [[T_AM, T_AM_END, '前半戦', 'am'], [T_AM_END, T_PM, '昼休み', 'lunch'], [T_PM, T_CLOSE, '後半戦', 'pm']];
+function earnMove(x) { return x.t >= T_CLOSE ? ['明日の朝 9:00 に株価が動く', '取引終了後の発表', '#c0392b'] : x.t === T_AM_END ? ['12:30 の後半戦スタートで動く', '昼休み中の発表', '#c27c0e'] : ['発表されたらすぐ株価が動く', '取引中の発表', '#1e8449']; }
+function nowLabel() {
+  const m = state.minute;
+  if (m < T_AM) return `開始前（9:00 に前半戦スタート・あと${T_AM - m}分）`;
+  if (m < T_AM_END) return `前半戦（11:30 まで・あと${T_AM_END - m}分）`;
+  if (m < T_PM) return `昼休み（12:30 に後半戦スタート・あと${T_PM - m}分）`;
+  if (m < T_CLOSE) return `後半戦（15:30 に取引終了・あと${T_CLOSE - m}分）`;
+  return '本日の取引は終了';
+}
 /* ---- 1日のスケジュール（取引時間＋決算発表）：ホワイトボードとパネルで共通 ---- */
 function schedRows() {
   const dl = isDeadline(state.day), rows = [
@@ -4269,29 +4309,46 @@ function schedRows() {
 /* 今どの行か（時刻がその行以上で、次の行より前） */
 function schedNow(rows) { const m = state.minute; let cur = -1; for (let i = 0; i < rows.length; i++) if (rows[i].t <= m) cur = i; return cur; }
 function drawCalBoard(g) {
-  const W = 1024, H = 640;
+  const W = 1024, H = 640, m = state.minute;
   g.fillStyle = '#eef1f5'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#1b2a4a'; g.font = `900 46px ${F_JP}`; g.fillText('本日のスケジュール', 36, 64);
-  g.fillStyle = '#c0392b'; g.font = `700 30px ${F_NUM}`; g.textAlign = 'right'; g.fillText(`DAY ${state.day}　${hhmm(state.minute)}`, W - 36, 60); g.textAlign = 'left';
-  g.strokeStyle = '#2b3a55'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 86); g.lineTo(W - 32, 86); g.stroke();
-  const rows = schedRows(), cur = schedNow(rows), rh = Math.min(62, Math.floor((H - 110) / rows.length));
-  let y = 100;
-  rows.forEach((r, i) => {
-    const past = i < cur && !(r.k === 'lunch' && state.minute < r.to), now = i === cur;
-    if (r.k === 'lunch') { g.fillStyle = now && state.minute < r.to ? 'rgba(194,124,14,.22)' : 'rgba(194,124,14,.1)'; g.fillRect(28, y, W - 56, rh - 6); }
-    if (now) { g.fillStyle = 'rgba(29,111,209,.12)'; g.fillRect(28, y, W - 56, rh - 6); g.fillStyle = '#1d6fd1'; g.beginPath(); g.moveTo(8, y + rh / 2 - 14); g.lineTo(26, y + rh / 2 - 3); g.lineTo(8, y + rh / 2 + 8); g.fill(); }
-    const base = y + rh / 2 + 8, col = past ? '#9aa3b2' : '#1b2a4a';
-    g.fillStyle = col; g.font = `700 32px ${F_NUM}`; g.fillText(r.k === 'lunch' ? `${hhmm(r.t)}` : hhmm(r.t), 44, base);
-    const tag = { pre: ['寄り前', '#6b7488'], open: ['取引', '#1e8449'], lunch: ['昼休み', '#c27c0e'], close: ['終了', '#c0392b'], earn: ['決算', '#8e44ad'] }[r.k];
-    g.font = `900 20px ${F_JP}`; const tw = g.measureText(tag[0]).width + 20; rr(g, 150, base - 26, tw, 32, 16); g.fillStyle = past ? '#b8bfcc' : tag[1]; g.fill(); g.fillStyle = '#fff'; g.fillText(tag[0], 160, base - 3);
-    g.fillStyle = col; g.font = `900 30px ${F_JP}`; g.fillText(r.a, 270, base, 330);
-    const gs = r.k === 'earn' && !r.x.done && earnGuess(r.x);
-    if (gs) { g.fillStyle = gs[1]; g.font = `900 22px ${F_JP}`; g.fillText(`${gs[2]}${gs[0]}`, 610, base - 12, W - 650); g.fillStyle = '#4a5670'; g.font = `700 17px ${F_JP}`; g.fillText(r.b, 610, base + 12, W - 650); }
-    else { g.fillStyle = past ? '#aab1be' : '#4a5670'; g.font = `700 20px ${F_JP}`; g.fillText(r.b, 610, base - 2, W - 650); }
-    if (r.k === 'earn') { if (r.x.done) { g.strokeStyle = '#c0392b'; g.lineWidth = 3; g.beginPath(); g.moveTo(40, base - 10); g.lineTo(W - 40, base - 10); g.stroke(); } }
-    y += rh;
+  /* 取引時間の帯 */
+  g.fillStyle = '#1b2a4a'; g.font = `900 26px ${F_JP}`; g.fillText('取引時間', 36, 44);
+  g.fillStyle = '#c0392b'; g.font = `700 26px ${F_NUM}`; g.textAlign = 'right'; g.fillText(`DAY ${state.day}　いま ${hhmm(m)}`, W - 36, 44); g.textAlign = 'left';
+  const bx = 36, bw = W - 72, span = T_CLOSE - T_AM;
+  SESS.forEach(([a, b, lb, k]) => {
+    const x = bx + (a - T_AM) / span * bw, w = (b - a) / span * bw, on = m >= a && m < b, past = m >= b;
+    rr(g, x + 2, 58, w - 4, 70, 10);
+    g.fillStyle = k === 'lunch' ? (on ? '#f3c98b' : '#f6e3c4') : on ? '#1d6fd1' : past ? '#c9ced8' : '#dce6f5'; g.fill();
+    g.fillStyle = on && k !== 'lunch' ? '#fff' : past ? '#8a93a3' : '#1b2a4a'; g.textAlign = 'center';
+    g.font = `900 28px ${F_JP}`; g.fillText(lb, x + w / 2, 90, w - 16);
+    g.font = `700 20px ${F_NUM}`; g.fillText(`${hhmm(a)}〜${hhmm(b)}`, x + w / 2, 117, w - 16); g.textAlign = 'left';
   });
-  if (!(state.calendar || []).length) { g.fillStyle = '#6b7488'; g.font = `700 20px ${F_JP}`; g.fillText('今日は決算発表なし', 36, H - 16); }
+  if (m >= T_AM && m < T_CLOSE) { const x = bx + (m - T_AM) / span * bw; g.fillStyle = '#c0392b'; g.fillRect(x - 2, 52, 4, 82); g.beginPath(); g.moveTo(x - 9, 50); g.lineTo(x + 9, 50); g.lineTo(x, 62); g.fill(); }
+  g.fillStyle = '#4a5670'; g.font = `700 20px ${F_JP}`; g.fillText(`いま：${nowLabel()}`, 36, 158, W - 72);
+  g.fillStyle = isDeadline(state.day) ? '#c0392b' : '#6b7488'; g.textAlign = 'right'; g.fillText(isDeadline(state.day) ? `15:30 ノルマ判定（${yen(state.quota)}）` : `ノルマ期限は DAY ${deadlineOf(state.day)}`, W - 36, 158); g.textAlign = 'left';
+  g.strokeStyle = '#2b3a55'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 174); g.lineTo(W - 32, 174); g.stroke();
+  /* 決算発表（メイン） */
+  g.fillStyle = '#c0392b'; g.font = `900 40px ${F_JP}`; g.fillText('決算発表', 36, 222);
+  const cal = (state.calendar || []).slice().sort((p, q) => p.t - q.t);
+  if (!cal.length) { g.fillStyle = '#6b7488'; g.font = `700 34px ${F_JP}`; g.fillText('今日は決算発表なし', 36, 300); return; }
+  const rh = Math.min(128, Math.floor((H - 246) / cal.length));
+  let y = 238;
+  for (const x of cal) {
+    const c = state.cos[x.ci]; if (!c) continue;
+    const [mv, why, mc] = earnMove(x), done = x.done, gs = !done && earnGuess(x);
+    rr(g, 28, y, W - 56, rh - 10, 12); g.fillStyle = done ? '#e3e6ec' : '#ffffff'; g.fill(); g.strokeStyle = done ? '#cfd4dd' : '#b9c3d6'; g.lineWidth = 2; g.stroke();
+    const cy = y + (rh - 10) / 2;
+    g.fillStyle = done ? '#9aa3b2' : '#1b2a4a'; g.font = `900 46px ${F_NUM}`; g.fillText(hhmm(x.t), 48, cy + 16);
+    g.font = `900 38px ${F_JP}`; g.fillText(c.short, 210, cy - 2, 300);
+    g.fillStyle = done ? '#9aa3b2' : '#6b7488'; g.font = `700 18px ${F_NUM}`; g.fillText(`#${c.code}`, 210, cy + 28);
+    if (done) { g.fillStyle = '#8a93a3'; g.font = `900 30px ${F_JP}`; g.fillText('発表済', 540, cy + 12); g.strokeStyle = '#c0392b'; g.lineWidth = 4; g.beginPath(); g.moveTo(40, cy); g.lineTo(W - 40, cy); g.stroke(); }
+    else {
+      g.fillStyle = mc; g.font = `900 24px ${F_JP}`; g.fillText(mv, 540, cy - 8, W - 590);
+      g.fillStyle = '#6b7488'; g.font = `700 18px ${F_JP}`; g.fillText(`${why}${x.t > m ? `・あと${x.t - m}分` : ''}`, 540, cy + 20, 200);
+      if (gs) { g.font = `900 20px ${F_JP}`; const tw = g.measureText(gs[0]).width + 36; rr(g, W - 48 - tw, cy + 2, tw, 30, 15); g.fillStyle = gs[1]; g.fill(); g.fillStyle = '#fff'; g.fillText(`${gs[2]} ${gs[0]}`, W - 38 - tw, cy + 24); }
+    }
+    y += rh;
+  }
 }
 function drawTicker() {
   const g = ticker.ctx; g.fillStyle = '#020306'; g.fillRect(0, 0, 4096, 64); g.textBaseline = 'middle';
@@ -4356,7 +4413,7 @@ function promptFor(t) {
   if (t.kind === 'bossdoor') return BQ.active && BQ.mode === 'praise' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> 社長室をノックする' : '';
   if (t.kind === 'st') { const c = state.cos[t.ci]; const u = deskUser(t.ci); return u ? `${stationLabel(t.ci)} ${esc(c.short)}：${esc(nameOf(u.by || u.peer))}が使用中` : `<kbd>E</kbd>座る　${stationLabel(t.ci)} ${esc(c.short)}`; }
   if (t.kind === 'front') { const c = state.cos[t.ci]; return powered(t.ci) ? `${esc(c.short)}（${stationLabel(t.ci)}）　<kbd>Q</kbd> 指さし` : ''; }
-  return { news: '<kbd>E</kbd>ニュース', all: '<kbd>E</kbd>#株クラ', cal: '<kbd>E</kbd>本日のスケジュール', big: '<kbd>E</kbd>持ち株一覧' }[t.kind] || '';
+  return { news: '<kbd>E</kbd>ニュース', all: '<kbd>E</kbd>#株クラ', cal: '<kbd>E</kbd>決算発表と取引時間', big: '<kbd>E</kbd>持ち株一覧' }[t.kind] || '';
 }
 function interact(t) {
   t = t || target; if (!t || !worldActive()) return;
@@ -4457,7 +4514,7 @@ function openPanel(kind) {
   releaseLook(); keys.clear();
   LOCAL.panel = kind;
   for (const [k, sel] of Object.entries(PANEL_SECTIONS)) $(sel).hidden = k !== kind;
-  $('#panelTitle').textContent = { news: 'ニュース', all: '#株クラ', cal: '本日のスケジュール', pos: '持ち株一覧', team: 'チーム', prof: 'アカウント' }[kind];
+  $('#panelTitle').textContent = { news: 'ニュース', all: '#株クラ', cal: '決算発表と取引時間', pos: '持ち株一覧', team: 'チーム', prof: 'アカウント' }[kind];
   if (kind === 'cal') renderCalendar();
   if (kind === 'pos') renderPositions();
   if (kind === 'team') { unread.team = 0; renderTeam(); }
@@ -4715,7 +4772,7 @@ function showModal(kind) {
       <p class="lead">1デスク1社。座って売り買いし、SNSで相場を動かし、会社のお金で3日ごとのノルマを超える。</p>
       <ul class="rulelist">
         <li>ノルマは<b>3営業日ごと</b>。期限の日の<b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
-        <li>取引時間は <b>9:00–11:30</b>（前場）と <b>12:30–15:30</b>（後場）。11:30〜12:30は昼休み。</li>
+        <li>取引時間は <b>前半戦 9:00〜11:30</b> と <b>後半戦 12:30〜15:30</b>。11:30〜12:30は昼休み。</li>
         <li>毎日の引け後に購買部で装備をレベルアップできる。上限まで上げたら<b>会社のレベルアップ</b>で上限を広げよう。</li>
         <li>席のモニターの「メール」には情報屋から連絡が来る。丁寧に付き合うと確度の高いリークをくれる。ただし怪しい業者に注意。</li>
         <li>ニュースとSNSで株価が動く。SNSの予想が当たるとフォロワーが増え、投稿が効くようになる。</li>
@@ -4752,8 +4809,8 @@ function showModal(kind) {
     $('#mLeave').onclick = () => leaveOffice();
   } else if (kind === 'report') {
     const r = state.report, ok = r.pass;
-    const after = r.afterClose.length ? `<p class="h3">引け後の発表（明日の寄り付きに反映）</p><ul class="notes">${r.afterClose.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
-    const carry = r.carry ? `<p class="owned">${r.carry}銘柄を持ち越します。夜間のニュースは翌朝の寄り付きで窓を開けます。</p>` : '';
+    const after = r.afterClose.length ? `<p class="h3">引け後の発表（明日の朝9:00に反映）</p><ul class="notes">${r.afterClose.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
+    const carry = r.carry ? `<p class="owned">${r.carry}銘柄を持ち越します。夜間のニュースは翌朝9:00の取引開始で窓を開けます。</p>` : '';
     let team = '';
     if (isMulti()) {
       const rows = (state.players || []).filter(p => p.seat >= 0).map(p => { const k = p.by || p.peer, cb = state.contrib[k] || { n: 0, r: 0 }; return `<tr><td><span class="nm" data-k="${esc(k)}"></span></td><td>${cb.n}回</td><td class="${cb.r > 0 ? 'up' : cb.r < 0 ? 'down' : ''}">${sYen(cb.r)}</td></tr>`; }).join('');
@@ -4765,7 +4822,7 @@ function showModal(kind) {
     else if (state.up.grace > 0) btns = `<button class="btn primary" id="mGrace" type="button">ノルマ猶予券を使う</button><button class="btn" id="mGiveup" type="button">諦める</button>`;
     else btns = `<button class="btn primary" id="mGiveup" type="button">社長室へ行く</button>`;
     md.innerHTML = `
-      <div class="eyebrow">DAY ${r.day}　15:30　大引け</div>
+      <div class="eyebrow">DAY ${r.day}　15:30　取引終了</div>
       ${r.mid ? `<div class="verdict mid">途中経過</div><p class="lead">第${r.term}期のノルマ判定は <b>DAY ${r.deadline} の15:30</b>（あと${r.deadline - r.day}営業日）。${ok ? '今の時点でノルマは超えている。' : `今のままだと ${yen(r.quota - r.assets)} 足りない。`}</p>` : `<div class="verdict ${ok ? 'pass' : 'fail'}">${ok ? `第${r.term}期 ノルマ達成` : `第${r.term}期 ノルマ未達`}</div>${ok ? `<p class="lead">次は第${r.term + 1}期（DAY ${r.day + 1}〜${r.day + TERM}）。ノルマは <b>${yen(quotaFor(r.day + 1))}</b>。</p>` : ''}`}
       <div class="kv">
         <div><span>会社の現金</span><span>${r.cash < 0 ? '借入 ' + yen(-r.cash) : yen(r.cash)}</span></div>
