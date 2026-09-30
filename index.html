@@ -252,6 +252,23 @@ kbd{font-family:var(--f-num);font-size:10px;letter-spacing:0;border:1px solid cu
 .pfol b{font-size:20px}
 .pfol small{color:var(--muted);font-size:11px}
 .pback{background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px}
+#notifs{position:absolute;right:16px;bottom:calc(112px + env(safe-area-inset-bottom,0px));width:min(360px,calc(100% - 32px));display:flex;flex-direction:column;gap:8px;pointer-events:none;z-index:6}
+.ncard{pointer-events:auto;text-align:left;display:flex;flex-direction:column;gap:3px;background:rgba(12,17,28,.94);border:1px solid var(--line);border-left:4px solid var(--amber);border-radius:10px;padding:9px 12px;box-shadow:0 10px 26px rgba(0,0,0,.45);cursor:pointer;color:var(--fg);font:inherit;animation:nin .35s cubic-bezier(.2,.9,.3,1.2)}
+.ncard:hover{border-color:#3a4a6a}
+.ncard .nm{display:flex;gap:8px;align-items:baseline;font-size:11px;color:var(--muted)}
+.ncard .nm b{color:var(--amber);font-size:11.5px}
+.ncard .nm time{font-family:var(--f-num)}
+.ncard .nc{margin-left:auto;font-family:var(--f-num);color:var(--fg)}
+.ncard .nt{font-weight:700;font-size:13.5px;line-height:1.45}
+.ncard .nh{font-size:10.5px;color:var(--faint)}
+.ncard.urgent{border-left-color:var(--up);background:rgba(58,10,22,.95)} .ncard.urgent .nm b{color:#ff8a9a}
+.ncard.pre .nm b{color:var(--note)} .ncard.earn{border-left-color:#ff8a5c} .ncard.earn .nm b{color:#ff8a5c}
+.ncard.out{animation:nout .3s forwards}
+@keyframes nin{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:none}}
+@keyframes nout{to{opacity:0;transform:translateX(40px)}}
+.flashli{background:rgba(242,169,59,.14)!important;transition:background .6s}
+@media (max-width:900px),(pointer:coarse){#notifs{bottom:calc(210px + env(safe-area-inset-bottom,0px));width:min(300px,calc(100% - 32px))}}
+@media (prefers-reduced-motion:reduce){.ncard,.ncard.out{animation:none}}
 .fold{font-family:var(--f-num);font-size:13px;font-weight:700;opacity:0}
 .fold.up{color:var(--ok)} .fold.down{color:var(--up)}
 .fold.show{animation:folpop 2.2s ease-out forwards}
@@ -488,6 +505,7 @@ body.seated .tl{width:250px}
     <ol class="hlog" id="hLog" aria-live="polite"></ol>
     <div class="hhint seathint" id="hHintSeat"><kbd>E</kbd> 立つ　<kbd>B</kbd> 買う　<kbd>S</kbd> 売る　<kbd>↑↓</kbd> 株数　<kbd>Tab</kbd> 情報切替<br>右ドラッグ 見回す　ホイール ズーム</div>
     <div class="hhint" id="hHint"><kbd>WASD</kbd> 移動 <kbd>Shift</kbd> 走る <kbd>マウス</kbd> 視点<br><kbd>E</kbd>・クリック 座る／画面を見る <kbd>Q</kbd> 指さし<br>ホイール ズーム <kbd>1</kbd>〜<kbd>6</kbd> スタンプ <kbd>Enter</kbd> チャット <kbd>T</kbd> チーム <kbd>P</kbd> 停止</div>
+    <div id="notifs" aria-live="polite"></div>
     <div class="fps" id="fps" aria-hidden="true"></div>
     <div id="cross" aria-hidden="true"></div>
     <div class="prompt" id="prompt" hidden></div>
@@ -1644,7 +1662,7 @@ function gameOver(reason) {
    ========================================================= */
 let unread = { news: 0, sns: 0, team: 0 };
 function publishNews(e, tag) {
-  addFeed({ k: 'news', nid: e.id, tl: e.tl || hhmm(state.minute), tag, text: e.text, body: newsBody(e), s: e.type === 'bait' ? e.hdir : e.type === 'macro' ? e.dir : e.type === 'flash' ? -1 : Math.sign(e.m || 0), rs: e.type === 'bait' || e.type === 'flash' ? 0 : e.type === 'macro' ? e.dir : Math.abs(e.m || 0) < .012 ? 0 : Math.sign(e.m), codes: e.type === 'macro' || e.ci == null ? [] : [state.cos[e.ci].code], f: e.f || null });
+  addFeed({ k: 'news', nid: e.id, tl: e.tl || hhmm(state.minute), tag, text: e.text, body: newsBody(e), mg: Math.round(Math.abs(e.type === 'macro' ? (e.mag || 0) * 2 : e.type === 'bait' ? .03 : e.type === 'flash' ? .08 : e.m || 0) * 100), s: e.type === 'bait' ? e.hdir : e.type === 'macro' ? e.dir : e.type === 'flash' ? -1 : Math.sign(e.m || 0), rs: e.type === 'bait' || e.type === 'flash' ? 0 : e.type === 'macro' ? e.dir : Math.abs(e.m || 0) < .012 ? 0 : Math.sign(e.m), codes: e.type === 'macro' || e.ci == null ? [] : [state.cos[e.ci].code], f: e.f || null });
 }
 function postSNS(acct, text, quiet, ch) { addFeed({ k: 'sns', tl: hhmm(state.minute), acct, text, q: quiet ? 1 : 0, ch: ch == null ? 'all' : ch }); }
 function itemCi(item) { return typeof item.ch === 'number' ? item.ch : -1; }
@@ -1662,7 +1680,7 @@ function addFeed(item) {
   for (let i = state.feed.length - 1, n = 0; i >= 0; i--) { const x = state.feed[i]; if (x.k === item.k && (item.k !== 'sns' || x.ch === item.ch)) { n++; if (n > cap) state.feed.splice(i, 1); } }
   if (NET.role === 'host') NET.out.push(['f', item]);
   if (item.k !== 'sns' || item.ch === 'all') renderFeedItem(item, true);
-  if (item.k === 'news') { newsDirty = true; queueCrowd(item); if (state.phase !== 'title') logLine(item.tag === '先行' ? '［先行］ニュース' : item.tag === '夜間' ? '［夜間］ニュース' : '［速報］ニュース', 'news'); for (const code of item.codes || []) { const c = co(code); if (c) c.flash = Math.max(c.flash, 3.5); } sfx(item.tag === '先行' ? 'pre' : 'news'); }
+  if (item.k === 'news') { newsDirty = true; queueCrowd(item); if (state.phase !== 'title') notifyNews(item); for (const code of item.codes || []) { const c = co(code); if (c) c.flash = Math.max(c.flash, 3.5); } sfx(item.tag === '先行' ? 'pre' : 'news'); }
   else if (item.k === 'sns') {
     if (!item.q && !item.amb) sfx('sns');
     if (item.ch === 'all') { snsDirty = true; if (SEAT.ci >= 0 && LOCAL.itab === 'all') markInfo(SEAT.ci); }
@@ -1679,7 +1697,7 @@ function feedHTML(item) {
   if (item.k === 'news') {
     const cls = { '決算': 't-earn', '先行': 't-pre', 'マクロ': 't-macro', '夜間': 't-night', '緊急': 't-urgent' }[item.tag] || '';
     const extra = item.f && FACT[item.f] ? `<span class="tag t-macro">${esc(FACT[item.f].label)}</span>` : '';
-    return `<li class="it news"><details><summary><div class="meta"><time>${esc(item.tl)}</time><span class="tag ${cls}">${esc(item.tag)}</span>${extra}<span class="more">記事を読む</span></div><p>${esc(item.text)}</p></summary><p class="nbody">${esc(item.body || '')}</p></details>${(item.codes || []).length ? `<div class="codes">${item.codes.map(codeChip).join('')}</div>` : ''}</li>`;
+    return `<li class="it news" data-nid="${esc(item.nid)}"><details><summary><div class="meta"><time>${esc(item.tl)}</time><span class="tag ${cls}">${esc(item.tag)}</span>${extra}<span class="more">記事を読む</span></div><p>${esc(item.text)}</p></summary><p class="nbody">${esc(item.body || '')}</p></details>${(item.codes || []).length ? `<div class="codes">${item.codes.map(codeChip).join('')}</div>` : ''}</li>`;
   }
   const body = esc(item.text).replace(/#(\d{4})/g, (_, code) => codeChip(code));
   const fol = folOf(item), folHtml = `<span class="fol" style="color:${folCol(fol)}">${esc(folStr(fol))}フォロワー</span>`;
@@ -2094,25 +2112,104 @@ function ambientTick() {
   let guard = 0;
   while (ambMinute < state.minute && guard++ < 20) { ambMinute++; genAmbient(ambMinute); }
 }
+/* ---- SNSの盛り上がり（流速）と反応の種類 ---- */
+const MKT = { heat: 0, co: {}, cd: {} };
+function bumpHeat(ci, amt) {
+  if (ci == null || ci < 0) { MKT.heat = Math.min(4.5, MKT.heat + amt); return; }
+  MKT.heat = Math.min(4.5, MKT.heat + amt * .55); MKT.co[ci] = Math.min(4.5, (MKT.co[ci] || 0) + amt);
+}
+/* 同じ文面が続かないように直近の投稿を避ける */
+const RECENTX = {};
+function uniqText(ch, fn) {
+  const r = RECENTX[ch] = RECENTX[ch] || [];
+  let t = fn(); for (let k = 0; k < 5 && r.includes(t); k++) t = fn();
+  r.push(t); if (r.length > 10) r.shift(); return t;
+}
+function nPosts(p) { let n = Math.floor(p); if (Math.random() < p - n) n++; return n; }
+const RX = {
+  crash: ['ギャー！！', 'ぎゃあああああ', 'ストップ安きたああ', '阿鼻叫喚', '退場です…', '追証こわい', '息してない', 'ｵﾜﾀ', '今夜の晩飯もやし確定', '全部溶けた', '誰か助けて', 'ナンピンしたらまた下がった', '一瞬で-10%は草も生えない', 'ちょっと目を離したらこれ', 'まだ下がるの！？', '買った瞬間これ', 'ｱｯｱｯｱｯ', '手の震えが止まらない', 'これは夢だ。そうに違いない', 'さよなら含み益', '損切りボタンが押せない', '板が消えた', 'ガチホ勢、生きてるか…', '今日から禁欲生活'],
+  surge: ['うおおおおお！', 'きたあああああ', '祭りだああああ', '爆益！！', '脳汁ドバドバ', 'ストップ高見えた', '握ってた俺、天才では？', '利確どこでする？', '乗り遅れた…泣', 'これは月まで行く🚀', 'やったぜ', '今夜は焼肉', '指が震えて注文できない', '全力で良かった', '含み益で手汗やばい', '買い板が分厚すぎる', '持ってない人かわいそう（持ってない）', 'ホルダーおめでとう！'],
+  mktCrash: ['全面安…', '日本終わった？', 'どこに逃げればいいの', '買い場？いや待て', 'ポジ全部真っ赤', '今日はもう見ない', '画面が青い', 'リーマン思い出した', '現金最強説', '全銘柄が下がってて逆に笑える'],
+  mktSurge: ['全面高！', '今日は何買っても上がる日', 'ポジ全部真っ赤（良い意味で）', '祭りの日', 'TKX強すぎ', 'ノーポジで見てるだけ辛い', '今日は勝てる気しかしない'],
+  quiet: ['今日は静かだね', 'ランチどこ行こう', '眠い', '板読み練習中', '昨日の損をまだ引きずってる', '株クラの皆さんおはようございます', '連敗中。今日こそ', 'デスクのコーヒーこぼした', '今月の目標：損切りを覚える', 'お茶が美味しい', 'IR資料を読む会', 'チャートに線を引くのが楽しい', '新人さん見てる？', '今日は様子見の日', 'お昼は株主優待の定食'],
+};
+function allAmbText() {
+  const iv = idxValue() / state.idxPrev - 1;
+  if (MKT.heat > 1.2 && Math.random() < .55) {
+    if (iv <= -.012) return pick(RX.mktCrash);
+    if (iv >= .012) return pick(RX.mktSurge);
+    let best = null, br = 0; for (const c of state.cos) { if (!powered(c.i)) continue; const r = c.price / c.prevClose - 1; if (Math.abs(r) > Math.abs(br)) { br = r; best = c; } }
+    if (best && Math.abs(br) > .03) return `#${best.code} ${best.short} ${pick(br > 0 ? RX.surge : RX.crash)}`;
+  }
+  let text = Math.random() < .45 ? pick(RX.quiet) : pick(ALL_AMB);
+  if (Math.random() < .3) { let best = null, br = 0; for (const c of state.cos) { if (!powered(c.i)) continue; const r = c.price / c.prevClose - 1; if (Math.abs(r) > Math.abs(br)) { br = r; best = c; } } if (best && Math.abs(br) > .01) text = `#${best.code} ${best.short} ${br > 0 ? pick(['強すぎ', '今日の主役', 'すごい上げ', '止まらない']) : pick(['弱すぎ', 'ひどい下げ', '何があった', '下げ止まらない'])}`; }
+  if (Math.random() < .08) text = `${pick(PRODUCTS[ri(0, PRODUCTS.length - 1)])}${pick(['、使ってる', 'のCM見た', 'が好き', '、最近よく聞く'])}`;
+  return text;
+}
+function coAmbText(c) {
+  const chp = c.price / c.prevClose - 1, r5 = c.intra.length > 5 ? c.price / c.intra[c.intra.length - 6] - 1 : 0;
+  if ((chp <= -.06 || r5 <= -.025) && Math.random() < .7) return pick(RX.crash);
+  if ((chp >= .07 || r5 >= .025) && Math.random() < .7) return pick(RX.surge);
+  const b = clamp(chp * 7, -.28, .28), r = Math.random();
+  return (r < .33 + b ? pick(CO_BULL) : r < .66 ? pick(CO_BEAR) : pick(CO_NEU))(c);
+}
+function moveBurst(c, r5) {
+  const pool = r5 < 0 ? RX.crash : RX.surge;
+  for (let k = 0, n = ri(3, 5); k < n; k++) REACTQ.push({ m: state.minute + ri(0, 3), ch: 'all', text: uniqText('all', () => `#${c.code} ${c.short} ${pick(pool)}`) });
+  for (let k = 0, n = ri(3, 6); k < n; k++) REACTQ.push({ m: state.minute + ri(0, 3), ch: c.i, text: uniqText(c.i, () => pick(pool)) });
+}
 function genAmbient(m) {
   flushCrowd(m);
   const rate = isOpen(m) ? 1 : .3;
-  if (Math.random() < .7 * rate) {
-    let text = pick(ALL_AMB);
-    if (Math.random() < .3) { let best = null, br = 0; for (const c of state.cos) { if (!powered(c.i)) continue; const r = c.price / c.prevClose - 1; if (Math.abs(r) > Math.abs(br)) { br = r; best = c; } } if (best && Math.abs(br) > .01) text = `#${best.code} ${best.short} ${br > 0 ? pick(['強すぎ', '今日の主役', 'すごい上げ']) : pick(['弱すぎ', 'ひどい下げ', '何があった'])}`; }
-    if (Math.random() < .1) text = `${pick(PRODUCTS[ri(0, PRODUCTS.length - 1)])}${pick(['、使ってる', 'のCM見た', 'が好き', '、最近よく聞く'])}`;
-    postAmb('all', text);
+  MKT.heat *= .92; for (const k in MKT.co) MKT.co[k] *= .9;
+  /* 急な値動き（5分で3%）にはその場で悲鳴や歓声が上がる */
+  if (isOpen(m)) for (const c of state.cos) {
+    if (!powered(c.i) || c.intra.length < 6) continue;
+    const r5 = c.price / c.intra[c.intra.length - 6] - 1;
+    if (Math.abs(r5) >= .03 && m - (MKT.cd[c.i] == null ? -99 : MKT.cd[c.i]) >= 12) { MKT.cd[c.i] = m; bumpHeat(c.i, 1.2 + Math.abs(r5) * 25); moveBurst(c, r5); }
   }
+  /* 盛り上がるほど投稿が増える（流速アップ） */
+  for (let k = 0, n = nPosts(.7 * rate * (1 + MKT.heat * .8)); k < n; k++) postAmb('all', uniqText('all', allAmbText));
   for (const c of state.cos) {
     if (!powered(c.i)) continue;
-    const heat = 1 + Math.min(3, c.volBoost * .35) + (c.flash > 0 ? 1.5 : 0);
-    if (Math.random() < .075 * rate * heat) {
-      const chp = c.price / c.prevClose - 1, b = clamp(chp * 7, -.28, .28), r = Math.random();
-      const tpl = r < .33 + b ? pick(CO_BULL) : r < .66 ? pick(CO_BEAR) : pick(CO_NEU);
-      postAmb(c.i, tpl(c));
-    }
+    const heat = 1 + Math.min(3, c.volBoost * .35) + (c.flash > 0 ? 1.5 : 0) + (MKT.co[c.i] || 0) * 1.6;
+    for (let k = 0, n = nPosts(.075 * rate * heat); k < n; k++) postAmb(c.i, uniqText(c.i, () => coAmbText(c)));
   }
 }
+/* 流速（直近5分の #株クラ 投稿数）…各端末で数える */
+function flowRate() {
+  const now = state.minute; let n = 0;
+  const f = state.feed;
+  for (let i = f.length - 1; i >= 0 && n < 200; i--) { const x = f[i]; if (x.k !== 'sns' || x.ch !== 'all') continue; const [hh, mm] = String(x.tl).split(':').map(Number); const t = hh * 60 + mm; if (now - t > 5 || now - t < 0) break; n++; }
+  return n / 5;
+}
+/* ---- ニュース通知（右下） ---- */
+let LAST_NEWS = null;
+function notifyNews(item) {
+  const box = $('#notifs'); if (!box || item.nid == null) return;
+  LAST_NEWS = item.nid;
+  const urgent = item.tag === '緊急', c = item.codes && item.codes[0] ? co(item.codes[0]) : null;
+  const el = document.createElement('button'); el.type = 'button';
+  el.className = 'ncard' + (urgent ? ' urgent' : item.tag === '先行' ? ' pre' : item.tag === '決算' ? ' earn' : '');
+  el.innerHTML = `<span class="nm"><b>${esc(urgent ? '緊急ニュース' : item.tag === '先行' ? '先行ニュース' : item.tag === '決算' ? '決算' : item.tag === '夜間' ? '夜間ニュース' : 'ニュース')}</b><time>${esc(item.tl)}</time>${c ? `<span class="nc">#${esc(c.code)} ${esc(c.short)}</span>` : ''}</span><span class="nt">${esc(String(item.text).replace(/^【[^】]*】/, ''))}</span><span class="nh"><kbd>N</kbd> かクリックで記事を読む</span>`;
+  const dismiss = () => { if (!el.isConnected || el.classList.contains('out')) return; el.classList.add('out'); setTimeout(() => el.remove(), 320); };
+  el.addEventListener('click', e => { e.stopPropagation(); openNewsItem(item.nid); dismiss(); });
+  box.prepend(el);
+  while (box.children.length > 3) box.lastElementChild.remove();
+  setTimeout(dismiss, urgent ? 12000 : 8000);
+}
+function openNewsItem(nid) {
+  if (nid == null) return;
+  if (SEAT.ci >= 0 && LOCAL.panel === 'desk') { LOCAL.itab = 'news'; LOCAL.art = nid; LOCAL.prof = null; renderCoFeed(); pushDeskUI(); return; }
+  openPanel('news');
+  setTimeout(() => {
+    const li = document.querySelector(`#fNews li[data-nid="${nid}"]`); if (!li) return;
+    const d = li.querySelector('details'); if (d) d.open = true;
+    li.scrollIntoView({ block: 'nearest' }); li.classList.add('flashli'); setTimeout(() => li.classList.remove('flashli'), 1600);
+  }, 30);
+  const box = $('#notifs'); if (box) box.innerHTML = '';
+}
+const RXF = { surge: RX.surge.map(t => () => t), crash: RX.crash.map(t => () => t) };
 function postAmb(ch, text) { addFeed({ k: 'sns', acct: 'a' + ri(0, AMB_NAMES.length - 1), text, tl: hhmm(state.minute), ch, amb: 1, q: 1 }); }
 /* ニュースへのNPCの反応
    群衆の反応：各端末でローカルに流す（数が多いので同期しない）
@@ -2132,11 +2229,13 @@ function queueCrowd(item) {
   const m = state.minute, c = item.codes && item.codes.length ? co(item.codes[0]) : null, s = item.s || 0;
   const push = (ch, text, d) => REACTQ.push({ m: m + d, ch, text });
   if (c) {
-    const nm = c.short, tag = `#${c.code} `, pool = s > 0 ? CROWD.up : s < 0 ? CROWD.down : CROWD.flat;
-    const bait = item.rs != null && s !== 0 && item.rs !== s, nAll = ri(3, 5), nCo = ri(2, 4);
+    const nm = c.short, tag = `#${c.code} `, mg = item.mg || 0, strong = mg >= 8 && s !== 0, pool = strong ? (s > 0 ? RXF.surge : RXF.crash) : s > 0 ? CROWD.up : s < 0 ? CROWD.down : CROWD.flat;
+    bumpHeat(c.i, strong ? 2.5 : mg >= 4 ? 1 : .3);
+    const bait = item.rs != null && s !== 0 && item.rs !== s, nAll = strong ? ri(6, 9) : ri(3, 5), nCo = strong ? ri(5, 8) : ri(2, 4);
     for (let k = 0; k < nAll; k++) push('all', tag + (bait && k >= 2 && Math.random() < .6 ? pick(CROWD.skeptic)(nm) : pick(pool)(nm)), ri(1, 7));
     for (let k = 0; k < nCo; k++) push(c.i, bait && k >= 1 && Math.random() < .5 ? pick(CROWD.skeptic)(nm) : pick(pool)(nm), ri(1, 6));
   } else if (item.f && FACT[item.f]) {
+    bumpHeat(-1, (item.mg || 0) >= 6 ? 1.5 : .6);
     const F = FACT[item.f].sens, dir = s || 1, ups = [], dns = [];
     for (const k in F) { if (k === 'all') continue; (F[k] * dir > 0 ? ups : dns).push(SECT[k]); }
     for (let k = 0, n = ri(3, 5); k < n; k++) {
@@ -3107,6 +3206,7 @@ function drawAllBig(g) {
   const W = 600, H = 1044;
   g.fillStyle = '#080b15'; g.fillRect(0, 0, W, H);
   g.fillStyle = C.sns; g.fillRect(0, 0, W, 76); g.fillStyle = '#fff'; g.font = `900 40px ${F_JP}`; g.fillText('#株クラ', 24, 52);
+  { const fr = flowRate(), lv = fr >= 4 ? 3 : fr >= 2 ? 2 : fr >= 1 ? 1 : 0; g.textAlign = 'right'; g.font = `700 22px ${F_JP}`; g.fillStyle = lv >= 3 ? '#ffd166' : '#dbe8ff'; g.fillText(lv >= 3 ? '流速MAX' : '流速', W - 116, 50); for (let i = 0; i < 4; i++) { g.fillStyle = i <= lv ? (lv >= 3 ? '#ff5468' : '#fff') : 'rgba(255,255,255,.25)'; g.fillRect(W - 104 + i * 20, 56 - (i + 1) * 9, 14, (i + 1) * 9); } g.textAlign = 'left'; }
   drawTimeline(g, snsAll(), 20, 96, W - 40, H - 108, 26, null, 16);
 }
 function drawIdxMon(g) {
@@ -3144,7 +3244,8 @@ function bigFx(o) {
   if (state.phase === 'market' && runsSim()) snsBurst(BIGFX.ci, BIGFX.sign);
 }
 function snsBurst(ci, sign) {
-  const pool = sign >= 0 ? BURST_UP : BURST_DN, c = state.cos[ci];
+  bumpHeat(ci, ci >= 0 ? 3.5 : 4.5);
+  const pool = sign >= 0 ? BURST_UP.concat(RX.surge) : BURST_DN.concat(RX.crash), c = state.cos[ci];
   for (let k = 0; k < 9; k++) { const tx = pick(pool); postAmb('all', c ? `#${c.code} ${c.short} ${tx}` : tx); }
   if (c) for (let k = 0; k < 7; k++) postAmb(ci, pick(pool));
 }
@@ -3831,6 +3932,7 @@ document.addEventListener('keydown', e => {
     else if (e.key === 'ArrowUp') { setQty(LOCAL.qty + 100); e.preventDefault(); }
     else if (e.key === 'ArrowDown') { setQty(LOCAL.qty - 100); e.preventDefault(); }
     else if (e.key === 'Tab') { LOCAL.itab = ITABS[(Math.max(0, ITABS.indexOf(LOCAL.itab)) + (e.shiftKey ? 3 : 1)) % 4]; LOCAL.art = null; LOCAL.prof = null; renderCoFeed(); pushDeskUI(); e.preventDefault(); }
+    else if (k === 'n') { openNewsItem(LAST_NEWS); e.preventDefault(); }
     else if (k === 'q') sendPing(LOCAL.sel);
     else if (k === 'p') request('ctl', { a: 'pause', v: !state.paused });
     else if (e.key === 'Enter') { if (isMulti()) { showChatBar(); e.preventDefault(); } }
@@ -3846,6 +3948,7 @@ document.addEventListener('keydown', e => {
   if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (e.repeat) return;
   if (k === 'e') interact();
+  else if (k === 'n') openNewsItem(LAST_NEWS);
   else if (k === 'q') pingTarget();
   else if (k === 'p') request('ctl', { a: 'pause', v: !state.paused });
   else if (k === 't') openPanel('team');
