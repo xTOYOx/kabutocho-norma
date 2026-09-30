@@ -387,6 +387,17 @@ body.bosscut #lockHint,body.bosscut #cross,body.bosscut #prompt,body.bosscut .fp
 .item p.nx b{color:var(--amber);font-family:var(--f-num);margin-right:2px}
 .item small.warn{color:var(--note);font-size:11.5px;line-height:1.4}
 .item.maxed{opacity:.72}
+.item.locked{opacity:.8;border-style:dashed}
+.item small.lock{color:var(--note);font-weight:700}
+.item .pips i.lock{background:repeating-linear-gradient(135deg,rgba(255,255,255,.14) 0 3px,transparent 3px 6px)}
+.clvcard{border:1px solid rgba(242,169,59,.5);background:linear-gradient(135deg,rgba(242,169,59,.14),rgba(29,111,209,.12));border-radius:12px;padding:12px 16px;margin:0 0 12px;display:flex;flex-direction:column;gap:6px}
+.clvcard .clvh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.clvcard .clvn{font-weight:900;font-size:15px} .clvcard .clvn b{font-family:var(--f-num);font-size:24px;color:var(--amber)}
+.clvcard .pips{display:inline-flex;gap:5px} .clvcard .pips i{width:26px;height:9px;border-radius:5px;background:rgba(255,255,255,.12)} .clvcard .pips i.on{background:var(--amber)}
+.clvcard p{margin:0;font-size:13px;color:var(--fg)}
+.clvcard .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.clvcard .price{font-family:var(--f-num);font-weight:700;color:var(--amber);font-size:18px}
+.cal .eg{display:block;font-style:normal;font-size:11.5px;font-weight:700}
 .verdict.mid{color:var(--note)}
 .qhead .lbl small{font-size:10.5px;color:var(--muted);margin-left:4px}
 .qhead .lbl .due{color:#fff;background:var(--up);border-radius:4px;padding:0 5px;font-size:10.5px;margin-left:4px}
@@ -843,6 +854,12 @@ const COMPANIES = [
   { code: '5021', name: '凪浜エナジー', short: '凪浜', sector: 'energy', base: 1453, vol: 1.0, beta: 0.8 },
   { code: '8871', name: '碧海不動産', short: '碧海', sector: 'estate', base: 764, vol: 0.9, beta: 1.0 },
   { code: '5595', name: 'ツクヨミ宇宙', short: 'ツクヨミ', sector: 'space', base: 642, vol: 2.2, beta: 1.6 },
+  { code: '6146', name: 'カザミ精機', short: 'カザミ', sector: 'semi', base: 2480, vol: 1.3, beta: 1.3 },
+  { code: '4816', name: 'ユメミル映像', short: 'ユメミル', sector: 'game', base: 980, vol: 1.5, beta: 1.1 },
+  { code: '9527', name: 'ハルカゼ電力', short: 'ハルカゼ', sector: 'energy', base: 1180, vol: .7, beta: .6 },
+  { code: '4927', name: 'シラユキ化粧品', short: 'シラユキ', sector: 'retail', base: 3120, vol: 1.1, beta: .9 },
+  { code: '8715', name: 'ホシミ証券', short: 'ホシミ証', sector: 'bank', base: 845, vol: 1.3, beta: 1.4 },
+  { code: '7266', name: 'イナズマモーター', short: 'イナズマ', sector: 'auto', base: 1760, vol: 1.7, beta: 1.2 },
 ];
 const FACT = {
   fx: { label: '為替', sens: { auto: 1, semi: .6, game: .3, air: -.7, retail: -.5, food: -.4, energy: -.3 } },
@@ -956,32 +973,64 @@ const CHATTER = [
 const NOISE = ['含み損が友達。', 'ナンピンしたら底が抜けた', '今日の後場は荒れそうな予感', '昼はカツ丼。勝つ', '損切りできない病、治療法を求む', 'TKX重いな…', '利確したら上がる、ホールドしたら下がる。なぜ', '板が薄い。怖い', '寄り天だけは勘弁して', 'ノルマに追われる夢を見た', '指値が1円届かなかった', 'PTSで見てたやつ、案の定窓開けて始まった', '信用買い残が積み上がってて怖い', '材料出尽くしって言葉、便利すぎる', '今日はノートレが正解かもしれん', '決算跨ぎはギャンブル。わかってるのにやめられない', '株クラの皆さん、今日も生きてますか'];
 
 /* 購買部：レベル制。安いLv1から段階的に強くなる */
+/* 会社レベル：上げるとオフィスが広がり、購買のレベル上限も上がる */
+const CLV = [null,
+  { price: 0, eff: '創業時' },
+  { price: 500000, eff: '購買のレベル上限が上がる' },
+  { price: 1200000, eff: 'オフィス拡張：左ウィング開放（デスク3台分）＋購買の上限アップ' },
+  { price: 2800000, eff: 'オフィス拡張：右ウィング開放（デスク3台分）＋購買の上限アップ' },
+  { price: 6000000, eff: '購買のレベル上限がすべて最大に' },
+];
+const CLV_MAX = 5, MARGIN_LEV = [1, 1, 1.5, 2, 3], SOKU_LEAD = [0, 2, 4, 6, 8, 11], LEAK_ADD = [0, .08, .16, .26, .38], FEE_RATE = [.001, .0007, .0004, 0], FEE_MIN = [100, 70, 40, 0], POST_CD = [10, 8, 6, 4], MAIL_MUL = [1, 1.3, 1.3, 1.6], EARN_ACC = [0, .62, .76, .9];
+/* 購買部：Lv1は安く、会社レベルごとに上限が1〜2段ずつ開く（cap は会社Lv1〜5での上限） */
 const UPGRADES = [
-  { id: 'desk', name: 'デスク増設', max: 2, lv: s => s.up.lines, set: (s, l) => { s.up.lines = l; }, lvs: [
+  { id: 'desk', name: 'デスク増設', max: 4, cap: [1, 2, 3, 4, 4], lv: s => s.up.lines | 0, set: (s, l) => { s.up.lines = l; }, lvs: [
     { price: 60000, eff: '後ろにデスク2台。千草食品・凪浜エナジーを取引できる' },
-    { price: 140000, eff: 'さらに2台。碧海不動産・ツクヨミ宇宙を取引できる' }] },
-  { id: 'sokuho', name: '速報端末', max: 3, lv: s => s.up.sokuho | 0, set: (s, l) => { s.up.sokuho = l; }, lvs: [
-    { price: 50000, eff: 'ニュースを株価が動く約3分前に受信（先行配信）' },
-    { price: 150000, eff: '約6分前に受信' },
-    { price: 380000, eff: '約10分前に受信' }] },
-  { id: 'margin', name: '信用取引', max: 3, lv: s => s.up.margin ? s.up.lev : 0, set: (s, l) => { s.up.margin = l >= 1; s.up.lev = Math.max(1, l); }, lvs: [
+    { price: 150000, eff: 'さらに2台。碧海不動産・ツクヨミ宇宙を取引できる' },
+    { price: 400000, eff: '左ウィングに3台。カザミ精機・ユメミル映像・ハルカゼ電力' },
+    { price: 800000, eff: '右ウィングに3台。シラユキ化粧品・ホシミ証券・イナズマモーター' }] },
+  { id: 'sokuho', name: '速報端末', max: 5, cap: [1, 2, 3, 4, 5], lv: s => s.up.sokuho | 0, set: (s, l) => { s.up.sokuho = l; }, lvs: [
+    { price: 40000, eff: 'ニュースを株価が動く約2分前に受信（先行配信）' },
+    { price: 100000, eff: '約4分前に受信' },
+    { price: 220000, eff: '約6分前に受信' },
+    { price: 450000, eff: '約8分前に受信' },
+    { price: 850000, eff: '約11分前に受信' }] },
+  { id: 'margin', name: '信用取引', max: 4, cap: [1, 2, 3, 3, 4], lv: s => s.up.mlv | 0, set: (s, l) => { s.up.mlv = l; s.up.margin = l >= 1; s.up.lev = MARGIN_LEV[l]; }, lvs: [
     { price: 80000, eff: '空売りができる（値下がりでも稼げる）' },
-    { price: 220000, eff: '総資産の2倍まで株を持てる。足りない分は借入' },
-    { price: 520000, eff: '総資産の3倍まで。損失も3倍になる' }] },
-  { id: 'gyoukai', name: '業界紙', max: 3, lv: s => s.up.gyoukai | 0, set: (s, l) => { s.up.gyoukai = l; }, lvs: [
-    { price: 40000, eff: '材料の前に出るリーク投稿が少し増える' },
-    { price: 120000, eff: 'リーク投稿がさらに増える' },
-    { price: 300000, eff: 'ほとんどの材料でリークが出る' }] },
-  { id: 'fee', name: '手数料プラン', max: 2, lv: s => s.up.zerofee | 0, set: (s, l) => { s.up.zerofee = l; }, lvs: [
-    { price: 30000, eff: '売買手数料が半額（0.05%・最低¥50）' },
-    { price: 90000, eff: '売買手数料が無料' }] },
+    { price: 200000, eff: '総資産の1.5倍まで株を持てる。足りない分は借入' },
+    { price: 480000, eff: '総資産の2倍まで' },
+    { price: 950000, eff: '総資産の3倍まで。損失も3倍になる' }] },
+  { id: 'gyoukai', name: '業界紙', max: 4, cap: [1, 2, 3, 4, 4], lv: s => s.up.gyoukai | 0, set: (s, l) => { s.up.gyoukai = l; }, lvs: [
+    { price: 30000, eff: '材料の前に出るリーク投稿が少し増える' },
+    { price: 90000, eff: 'リーク投稿が増える' },
+    { price: 220000, eff: 'リーク投稿がかなり増える' },
+    { price: 480000, eff: 'ほとんどの材料でリークが出る' }] },
+  { id: 'fee', name: '手数料プラン', max: 3, cap: [1, 2, 2, 3, 3], lv: s => s.up.zerofee | 0, set: (s, l) => { s.up.zerofee = l; }, lvs: [
+    { price: 20000, eff: '売買手数料 0.07%（最低¥70）' },
+    { price: 60000, eff: '売買手数料 0.04%（最低¥40）' },
+    { price: 160000, eff: '売買手数料が無料' }] },
+  { id: 'snsteam', name: 'SNS運用チーム', max: 3, cap: [1, 2, 3, 3, 3], lv: s => s.up.snsteam | 0, set: (s, l) => { s.up.snsteam = l; }, lvs: [
+    { price: 25000, eff: '投稿の待ち時間 10分 → 8分' },
+    { price: 80000, eff: '投稿の待ち時間 6分' },
+    { price: 200000, eff: '投稿の待ち時間 4分' }] },
+  { id: 'mailsec', name: 'メール秘書', max: 3, cap: [1, 2, 3, 3, 3], lv: s => s.up.mailsec | 0, set: (s, l) => { s.up.mailsec = l; }, lvs: [
+    { price: 30000, eff: '返信で上がる友好度が1.3倍' },
+    { price: 100000, eff: '怪しい業者のメールに ⚠ マークが付く' },
+    { price: 260000, eff: '迷惑メールフィルタ：業者のメールが届かなくなる。友好度1.6倍' }] },
+  { id: 'earnsvc', name: '決算予想サービス', max: 3, cap: [1, 2, 2, 3, 3], lv: s => s.up.earnsvc | 0, set: (s, l) => { s.up.earnsvc = l; }, lvs: [
+    { price: 50000, eff: '決算予定に「良さそう／悪そう」の予想が付く（当たる確率 約6割）' },
+    { price: 140000, eff: '予想の精度 約75%' },
+    { price: 350000, eff: '予想の精度 約90%' }] },
   { id: 'grace', name: 'ノルマ猶予券', consumable: true, max: 1, lv: s => s.up.grace | 0, set: (s, l) => { s.up.grace = l; }, price: s => 150000 * termOf(s.day), eff: '期限の日のノルマ未達を一度だけ見逃してもらう。1枚まで・使うと無くなる。値段は期ごとに上がる' },
 ];
 function upPrice(u, s) { return u.consumable ? u.price(s) : u.lvs[u.lv(s)].price; }
-function upCanLevel(u, s) { return u.lv(s) < u.max; }
+function upCap(u, s) { return u.cap ? Math.min(u.max, u.cap[clamp((s.up.clv || 1) - 1, 0, 4)]) : u.max; }
+function upCanLevel(u, s) { return u.lv(s) < upCap(u, s); }
+/* 今の会社レベルより上で、この項目の上限が開くレベル */
+function upNextClv(u, s) { const lv = u.lv(s); if (!u.cap || lv >= u.max) return 0; for (let k = (s.up.clv || 1); k < 5; k++) if (u.cap[k] > lv) return k + 1; return 0; }
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
-const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v8';
+const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v9';
 const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail'];
 
 /* =========================================================
@@ -1011,9 +1060,9 @@ function initCo(d, i) {
 }
 function newGame(mode) {
   state = {
-    v: 8, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
+    v: 9, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
     cash: START_CASH, quota: quotaFor(1), pos: {}, watch: {}, coPosts: {}, cred: {},
-    up: { lines: 0, sokuho: 0, margin: false, lev: 1, analyst: false, gyoukai: 0, zerofee: 0, grace: 0 },
+    up: { clv: 1, lines: 0, sokuho: 0, margin: false, mlv: 0, lev: 1, analyst: false, gyoukai: 0, zerofee: 0, snsteam: 0, mailsec: 0, earnsvc: 0, grace: 0 },
     cos: COMPANIES.map(initCo), idxPrev: 0, idxIntra: [],
     feed: [], events: [], items: [], itemPtr: 0, calendar: [], overnight: [], rumors: [], acct: {},
     stats: { dayStart: START_CASH, dayTrades: 0, dayFees: 0, best: START_CASH, history: [], totalTrades: 0 },
@@ -1023,7 +1072,8 @@ function newGame(mode) {
   state.overnight = makeOvernight();
   seedBacklog();
 }
-const powered = ci => ci < 8 || (ci < 10 && state.up.lines >= 1) || state.up.lines >= 2;
+const DESK_N = [8, 10, 12, 15, 18];
+const powered = ci => ci < DESK_N[clamp(state.up.lines | 0, 0, 4)];
 function idxValue() { let s = 0; for (const c of state.cos) s += c.price / c.base; return 28000 * s / state.cos.length; }
 const co = code => state.cos.find(c => c.code === code);
 function forEachPos(fn) { for (const key in state.pos) for (const code in state.pos[key]) fn(key, code, state.pos[key][code]); }
@@ -1229,7 +1279,7 @@ function applyLedger(L) {
   for (const k of LKEYS) if (k in L) state[k] = L[k];
   if (JSON.stringify(state.pos) !== prevPos) { markAllDirty(); posDirty = true; }
   if (JSON.stringify(state.players) !== prevPlayers) { refreshNames(); layoutSeats(); renderTeam(); }
-  if (JSON.stringify(state.up) !== prevUp) { markAllDirty(); if ('up' in L && state.up.analyst) rebuildFeed(); }
+  if (JSON.stringify(state.up) !== prevUp) { markAllDirty(); updateStations(); if ('up' in L && state.up.analyst) rebuildFeed(); }
   if ('deskUI' in L) for (const st of stations) st.info.dirty = true;
   hudDirty = true; boardDirty = true; syncCtlUI();
   if (state.phase !== prevPhase) renderPhase(prevPhase); else refreshModal();
@@ -1252,7 +1302,7 @@ function onSnap(msg) {
   if (b.got >= b.n) {
     delete NET.snaps[key];
     let s; try { s = JSON.parse(b.parts.join('')); } catch (e) { return; }
-    if (!s || s.v !== 8 || !Array.isArray(s.cos)) return;
+    if (!s || s.v !== 9 || !Array.isArray(s.cos)) return;
     state = s; NET.hostPeer = b.peer; NET.synced = true; NET.lastSeq = b.seq; NET.electing = false;
     for (const d2 of NET.tickBuf.splice(0)) if (d2.seq > b.seq) applyTick(d2);
     clearTimeout(NET.joinTimeout); clearInterval(NET.helloIv); NET.helloIv = null;
@@ -1407,11 +1457,18 @@ const BIZ = [
   '石油の精製・販売と洋上風力発電。原油価格の影響が大きい。',
   '湾岸エリアのマンション・オフィス開発。金利上昇に弱い。',
   '小型ロケットと衛星打ち上げのベンチャー。値動きが激しい。',
+  '半導体の検査装置と精密ロボットのメーカー。半導体の設備投資に左右される。',
+  'アニメ制作と配信のスタジオ。ヒット作が出ると一気に跳ねる。',
+  '関東の電力会社。値動きは穏やかで配当が厚い。燃料費に弱い。',
+  '化粧品メーカー。訪日客に人気で、免税売上の比率が高い。',
+  'ネット証券。相場が盛り上がると取引が増えて儲かる。',
+  'EV用モーターのベンチャー。自動車メーカーの採用次第で大きく動く。',
 ];
 const PRODUCTS = [
   ['ネオ光', 'NLクラウド'], ['SNチップ', '2nm製造装置'], ['EV「ソラ」', '軽バン「ハコ」'], ['胃薬「カグラン」', '新薬候補KG-7'],
   ['ヒバリのデパ地下', '免税カウンター'], ['星喰いの塔', 'ネオン釣り堀', 'カラクリ百鬼', '夜行列車スイート'], ['シラサギ国際線', 'マイル「白羽」'], ['しおみアプリ', '住宅ローン「波」'],
   ['千草のおにぎり', '健康飲料「ミドリ」'], ['凪浜製油所', '洋上風力「ナギ」'], ['碧海タワー', '湾岸再開発'], ['ヤタ', 'アメノ', 'ホシカゼ'],
+  ['検査装置「ミカガミ」', '精密アーム'], ['アニメ「星屑ポスト」', '配信「ユメミルch」'], ['ハルカゼでんき', '揚水発電'], ['美白美容液「ユキ」', '免税限定セット'], ['ホシミアプリ', 'NISA口座'], ['モーター「ライコウ」', '急速充電ユニット'],
 ];
 /* [a, b, a→bの波及, b→aの波及, aから見た説明, bから見た説明] */
 const REL = [
@@ -1424,6 +1481,12 @@ const REL = [
   [7, 10, .25, .3, '碧海不動産のメインバンク（大口の融資先）', 'メインバンクは潮見銀行'],
   [3, 8, .15, .1, '千草食品と健康飲料「ミドリ」を共同開発', '健康飲料「ミドリ」はカグラ製薬と共同開発'],
   [2, 9, .1, .15, '凪浜エナジーとEV充電網を整備', '秋津自動車とEV充電網を整備（EVが売れると追い風）'],
+  [12, 1, .15, .3, '東雲半導体に検査装置を納入', '検査装置はカザミ精機製'],
+  [13, 5, .25, .2, 'ピクセルノートとアニメ×ゲームの共同企画', 'ユメミル映像とアニメ×ゲームの共同企画'],
+  [14, 9, .2, .2, '凪浜エナジーから発電用の燃料を調達', 'ハルカゼ電力に発電用の燃料を供給'],
+  [15, 4, .2, .25, 'ヒバリ百貨店の化粧品売り場の主力ブランド', '化粧品売り場はシラユキ化粧品が主力'],
+  [16, 7, .2, .15, '潮見銀行と資本業務提携', 'ホシミ証券と資本業務提携'],
+  [17, 2, .2, .35, '秋津自動車の新型EVにモーターを供給', '新型EVのモーターはイナズマモーター製'],
 ];
 function relsOf(ci) { const out = []; for (const r of REL) { if (r[0] === ci) out.push({ ci: r[1], w: r[2], text: r[4] }); else if (r[1] === ci) out.push({ ci: r[0], w: r[3], text: r[5] }); } return out; }
 const FACT_COND = { fx: '円安', rate: '金利上昇', oil: '原油高', risk: '米国株高', ai: 'AI投資増', tour: '訪日客増' };
@@ -1527,7 +1590,8 @@ function planDay(from) {
     else { m = rand(-.01, .01); text = `${c.name}、第2四半期決算は市場予想並み`; }
     const e = { id: state.seq++, type: 'earn', t: def.t, ci: def.ci, m, text, tag: '決算', ek: r < .42 ? 'beat' : r < .52 ? 'exh' : r < .9 ? 'miss' : 'flat' };
     ev.push(e);
-    if (def.old) def.old.id = e.id; else state.calendar.push({ t: def.t, ci: def.ci, id: e.id, done: false });
+    const tr = e.ek === 'beat' ? 1 : e.ek === 'flat' ? 0 : -1, rr0 = Math.random();
+    if (def.old) { def.old.id = e.id; def.old.tr = tr; def.old.r = rr0; } else state.calendar.push({ t: def.t, ci: def.ci, id: e.id, done: false, tr, r: rr0 });
   }
   const nC = Math.min(10, 6 + Math.floor(d / 2));
   for (let k = 0; k < nC; k++) {
@@ -1548,7 +1612,7 @@ function planDay(from) {
   }
   for (const e of ev) {
     if (e.t <= f) continue;
-    const leakP = (e.type === 'macro' ? .35 : .55) + [0, .12, .25, .4][state.up.gyoukai | 0];
+    const leakP = (e.type === 'macro' ? .35 : .55) + LEAK_ADD[state.up.gyoukai | 0];
     if (e.type !== 'bait' && Math.random() < leakP) {
       const acct = wpick(LEAKERS), rel = ACC[acct].rel, trueDir = e.type === 'macro' ? e.dir : (Math.sign(e.m) || 1);
       const dir = Math.random() < rel ? trueDir : -trueDir;
@@ -1557,7 +1621,7 @@ function planDay(from) {
       if (lt >= e.t) lt = e.t - 3;
       if (lt > T_PRE && lt > f) items.push({ t: lt, a: 'leak', id: e.id, acct, dir });
     }
-    { const L = [0, 3, 6, 10][state.up.sokuho | 0]; if (L && e.t - L > T_PRE && e.t - L > f) items.push({ t: e.t - L, a: 'pre', id: e.id }); }
+    { const L = SOKU_LEAD[state.up.sokuho | 0] || 0; if (L && e.t - L > T_PRE && e.t - L > f) items.push({ t: e.t - L, a: 'pre', id: e.id }); }
     items.push({ t: e.t, a: 'news', id: e.id });
   }
   const nF = 2 + Math.floor(d / 3);
@@ -1832,7 +1896,7 @@ function setTab(t) { openPanel(t); }
 /* =========================================================
    売買（会社の共有口座）
    ========================================================= */
-const feeFor = v => (state.up.zerofee | 0) >= 2 ? 0 : state.up.zerofee ? Math.max(50, Math.round(v * .0005)) : Math.max(100, Math.round(v * .001));
+const feeFor = v => { const l = clamp(state.up.zerofee | 0, 0, 3); return l >= 3 ? 0 : Math.max(FEE_MIN[l], Math.round(v * FEE_RATE[l])); };
 function tradeBlock(c) {
   if (state.phase !== 'market') return '営業時間外';
   const m = state.minute;
@@ -1914,6 +1978,12 @@ function onAck(msg) {
 }
 function buyUpgrade(id, key) {
   if (state.phase !== 'shop') return;
+  if (id === 'clv') {
+    const cl = state.up.clv || 1, nx = CLV[cl + 1]; if (!nx || state.cash < nx.price) return;
+    state.cash -= nx.price; state.up.clv = cl + 1;
+    fx({ t: 'toast', text: `${nameOf(key)}が会社をレベルアップ！ 会社Lv${cl + 1}：${nx.eff}`, cls: 'good' }); fx({ t: 'sfx', k: 'bell' });
+    markAllDirty(); updateStations(); refreshModal(); saveGame(); return;
+  }
   const u = UPGRADES.find(x => x.id === id); if (!u || !upCanLevel(u, state)) return;
   const price = upPrice(u, state); if (state.cash < price) return;
   const nl = u.lv(state) + 1;
@@ -2033,7 +2103,7 @@ function saveGame() {
   if (NET.role === 'client') return;
   try { const s = JSON.parse(JSON.stringify(state)); s.players = []; s.ready = {}; localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { }
 }
-function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 8 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
+function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 9 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
 
 /* =========================================================
    HUD
@@ -2083,7 +2153,7 @@ function rulesHTML() {
 }
 function renderCalendar() {
   const el = $('#fCal');
-  const cal = state.calendar.map(x => { const c = state.cos[x.ci], [lab] = calReflect(x); return `<li class="${x.done ? 'done' : ''}"><span class="num">${hhmm(x.t)}</span><span>${esc(c.name)}</span><small>${x.done ? '発表済' : '株価が動く：' + lab}</small></li>`; }).join('');
+  const cal = state.calendar.map(x => { const c = state.cos[x.ci], [lab] = calReflect(x); const gs = !x.done && earnGuess(x); return `<li class="${x.done ? 'done' : ''}"><span class="num">${hhmm(x.t)}</span><span>${esc(c.name)}${gs ? `<em class="eg" style="color:${gs[1]}">${gs[2]} ${gs[0]}</em>` : ''}</span><small>${x.done ? '発表済' : '株価が動く：' + lab}</small></li>`; }).join('');
   el.innerHTML = `<ul class="cal">${cal || '<li>なし</li>'}</ul>`;
 }
 function renderChips() {
@@ -2529,7 +2599,7 @@ function credOf(key) {
 }
 function peekCred(key) { const c = state && state.cred && state.cred[key]; return c && typeof c.fol === 'number' ? c : newCred(); }
 const postClock = () => state.day * 2000 + state.minute;
-function postWait(cr) { return Math.max(0, POST_COOLDOWN - (postClock() - cr.last)); }
+function postWait(cr) { return Math.max(0, POST_CD[clamp(state.up.snsteam | 0, 0, 3)] - (postClock() - cr.last)); }
 function scheduleItem(it) {
   let i = state.itemPtr; while (i < state.items.length && state.items[i].t <= it.t) i++;
   state.items.splice(i, 0, it);
@@ -2614,8 +2684,10 @@ const colliders = [], interactables = [], surfaces = [];
 const F_JP = '"Zen Kaku Gothic New", "Hiragino Sans", sans-serif', F_NUM = '"JetBrains Mono", ui-monospace, monospace';
 const C = { bg: '#06101c', bgOff: '#04070c', panel: '#0b1627', fg: '#e4e9f2', muted: '#7f8aa3', faint: '#34405a', amber: '#f2a93b', up: '#ff5468', down: '#3ea6ff', ok: '#46c98e', note: '#f4d35e', cash: '#cfe3ff', grid: 'rgba(120,140,180,.12)', line: '#243047', sns: '#1d6fd1' };
 const ROWS = ['A', 'B', 'C'];
-const DESK_X = [-2.4, -.8, .8, 2.4], DESK_Z = [-1.2, 1.8, 4.8];
-const stationLabel = ci => `${ROWS[Math.floor(ci / 4)]}${ci % 4 + 1}`;
+const DESK_X = [-2.4, -.8, .8, 2.4], DESK_Z = [-1.2, 1.8, 4.8], WING_X = 5.6;
+/* ci 0〜11：中央の3列、12〜14：左ウィング、15〜17：右ウィング */
+function deskXZ(ci) { if (ci < 12) return [DESK_X[ci % 4], DESK_Z[Math.floor(ci / 4)]]; const w = ci < 15 ? -1 : 1; return [w * WING_X, DESK_Z[(ci - 12) % 3]]; }
+const stationLabel = ci => ci < 12 ? `${ROWS[Math.floor(ci / 4)]}${ci % 4 + 1}` : ci < 15 ? `L${ci - 11}` : `R${ci - 14}`;
 const upCol = v => v > 0 ? C.up : v < 0 ? C.down : C.muted;
 
 function canvasTex(w, h) {
@@ -2647,7 +2719,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v25 P2P';
+const GAME_VERSION = 'v26 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -2784,13 +2856,13 @@ function updateNote() {
 /* 決算ホワイトボード（キャスター付き） */
 const calBoard = surface(768, 460, drawCalBoard);
 (function () {
-  const grp = new THREE.Group(); grp.position.set(-6.2, 0, -2.3); grp.lookAt(-1, 0, 3); scene.add(grp);
+  const grp = new THREE.Group(); grp.position.set(-3.5, 0, -3.75); grp.lookAt(-.6, 0, 1.2); scene.add(grp);
   const board = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.2), new THREE.MeshStandardMaterial({ map: calBoard.tex, roughness: .6 })); board.position.y = 1.5; grp.add(board);
   const fr = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.3, .04), new THREE.MeshStandardMaterial({ color: '#b7bfcc', metalness: .4, roughness: .4 })); fr.position.set(0, 1.5, -.03); grp.add(fr);
   [-.95, .95].forEach(x => { const leg = new THREE.Mesh(new THREE.BoxGeometry(.05, 2.1, .05), legMat); leg.position.set(x, 1.05, -.05); grp.add(leg); const foot = new THREE.Mesh(new THREE.BoxGeometry(.06, .05, .6), legMat); foot.position.set(x, .06, -.05); grp.add(foot); });
   const tray = new THREE.Mesh(new THREE.BoxGeometry(1.6, .03, .08), new THREE.MeshStandardMaterial({ color: '#9aa3b2' })); tray.position.set(0, .88, .03); grp.add(tray);
   addInteract(board, { kind: 'cal', max: 4.5 });
-  addCol(-7.4, -5.1, -2.9, -1.7);
+  addCol(-4.6, -2.4, -4.2, -3.3);
 })();
 
 /* =========================================================
@@ -3001,14 +3073,14 @@ const kbTex = (() => { const kb = canvasTex(512, 160), g = kb.ctx; g.fillStyle =
   g.fillStyle = '#ff5468'; g.fillRect(8 + 13 * 33.4, 38, 28, 25); g.fillStyle = '#3ea6ff'; g.fillRect(8 + 12 * 33.4, 38, 28, 25); kb.tex.needsUpdate = true; return kb.tex; })();
 const stations = [];
 const MAIN_W = 1024, MAIN_H = 640, INFO_W = 896, INFO_H = 560;
-for (let ci = 0; ci < 12; ci++) {
-  const x = DESK_X[ci % 4], z = DESK_Z[Math.floor(ci / 4)];
+for (let ci = 0; ci < COMPANIES.length; ci++) {
+  const [x, z] = deskXZ(ci);
   const grp = new THREE.Group(); grp.position.set(x, 0, z); scene.add(grp);
   const top = new THREE.Mesh(new THREE.BoxGeometry(1.58, .05, .8), deskMat); top.position.set(0, .75, 0); grp.add(top);
   const modesty = new THREE.Mesh(new THREE.BoxGeometry(1.58, .55, .04), legMat); modesty.position.set(0, .45, -.38); grp.add(modesty);
   [[-.76, .36], [.76, .36]].forEach(([dx, dz]) => { const l = new THREE.Mesh(new THREE.BoxGeometry(.04, .75, .04), legMat); l.position.set(dx, .375, dz); grp.add(l); });
   const part = new THREE.Mesh(new THREE.BoxGeometry(1.58, .42, .04), partMat); part.position.set(0, .98, -.41); grp.add(part);
-  if (ci % 4 !== 3) { const side = new THREE.Mesh(new THREE.BoxGeometry(.03, .32, .8), partMat); side.position.set(.79, .93, 0); grp.add(side); }
+  if (ci < 12 && ci % 4 !== 3) { const side = new THREE.Mesh(new THREE.BoxGeometry(.03, .32, .8), partMat); side.position.set(.79, .93, 0); grp.add(side); }
   const kb = new THREE.Mesh(new THREE.BoxGeometry(.5, .02, .16), [legMat, legMat, new THREE.MeshStandardMaterial({ map: kbTex, roughness: .7 }), legMat, legMat, legMat]); kb.position.set(-.15, .775, .18); grp.add(kb);
   const mouse = new THREE.Mesh(new THREE.BoxGeometry(.06, .02, .1), legMat); mouse.position.set(.25, .775, .2); grp.add(mouse);
   const main = surface(MAIN_W, MAIN_H, (g, s) => drawDeskMain(g, s, ci), { ci, role: 'main' });
@@ -3038,7 +3110,31 @@ for (let ci = 0; ci < 12; ci++) {
   const col = addCol(x - .8, x + .8, z - .42, z + .42, ci);
   stations.push({ ci, grp, main, info, sign, x, z, chair, col });
 }
-function updateStations() { for (const s of stations) { const on = s.ci < 8 || powered(s.ci); s.grp.visible = on; s.col.off = !on; } }
+const WINGS = [];
+(function buildWings() {
+  const stripe = canvasTex(256, 32), sg = stripe.ctx;
+  for (let x = -32; x < 288; x += 32) { sg.fillStyle = '#f2c230'; sg.fillRect(x, 0, 16, 32); sg.fillStyle = '#111'; sg.fillRect(x + 16, 0, 16, 32); }
+  sg.setTransform(1, 0, 0, 1, 0, 0); stripe.tex.wrapS = THREE.RepeatWrapping; stripe.tex.repeat.set(9, 1); stripe.tex.needsUpdate = true;
+  [[-1, 3], [1, 4]].forEach(([side, need]) => {
+    const grp = new THREE.Group(); scene.add(grp);
+    const x = side * 4.15, z0 = -2.6, z1 = 5.6, L = z1 - z0;
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(.06, .16, L), new THREE.MeshStandardMaterial({ map: stripe.tex, roughness: .6 })); bar.position.set(x, .95, (z0 + z1) / 2); grp.add(bar);
+    const bar2 = bar.clone(); bar2.position.y = .55; grp.add(bar2);
+    for (let z = z0; z <= z1 + .01; z += L / 6) { const post = new THREE.Mesh(new THREE.CylinderGeometry(.04, .05, 1.05, 8), new THREE.MeshStandardMaterial({ color: '#d98a1a', roughness: .5 })); post.position.set(x, .52, z); grp.add(post); }
+    const sign = canvasTex(512, 256), g = sign.ctx;
+    g.fillStyle = '#f2c230'; g.fillRect(0, 0, 512, 256); g.fillStyle = '#111'; g.fillRect(10, 10, 492, 236); g.fillStyle = '#f2c230'; g.fillRect(18, 18, 476, 220);
+    g.fillStyle = '#111'; g.textAlign = 'center'; g.font = '900 54px "Zen Kaku Gothic New", sans-serif'; g.fillText('オフィス拡張予定地', 256, 104);
+    g.font = '700 36px "Zen Kaku Gothic New", sans-serif'; g.fillText(`会社Lv${need}で開放（デスク3台）`, 256, 178); sign.tex.needsUpdate = true;
+    for (const sz of [0, 3.4]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(1.3, .65), new THREE.MeshStandardMaterial({ map: sign.tex, roughness: .7 })); m.position.set(x - side * .05, 1.45, sz); m.rotation.y = -side * Math.PI / 2; grp.add(m);
+      const pole = new THREE.Mesh(new THREE.BoxGeometry(.04, 1.1, .04), new THREE.MeshStandardMaterial({ color: '#333' })); pole.position.set(x, .55, sz); grp.add(pole); }
+    const col = addCol(x - .08, x + .08, z0, z1);
+    WINGS.push({ grp, col, need });
+  });
+})();
+function updateStations() {
+  for (const s of stations) { const on = s.ci < 8 || powered(s.ci); s.grp.visible = on; s.col.off = !on; }
+  const cl = state.up.clv || 1; for (const w of WINGS) { const open = cl >= w.need; w.grp.visible = !open; w.col.off = open; }
+}
 
 /* ---- 同僚アバター ---- */
 /* ---- 同僚アバター：丸っこいカジュアルなトレーダー（ヘッドセット付き） ---- */
@@ -3232,7 +3328,7 @@ function computePeerSel() {
   if (isMulti() && NET.office) for (const p of NET.office.peers()) {
     if (p.sameTab || p.kind !== 'viewer') continue;
     const a = p.presence && p.presence.act; if (typeof a !== 'string' || !a.startsWith('st:')) continue;
-    const ci = +a.slice(3); if (!(ci >= 0 && ci < 12)) continue;
+    const ci = +a.slice(3); if (!(ci >= 0 && ci < stations.length)) continue;
     const pl = (state.players || []).find(x => x.peer === p.peer); if (!pl || pl.seat < 0) continue;
     (next[ci] = next[ci] || []).push(pl.seat);
   }
@@ -3309,8 +3405,10 @@ function drawDeskMain(g, s, ci) {
   rr(g, 108, 474, 230, 70, 10); g.fillStyle = '#0a1120'; g.fill(); g.strokeStyle = C.line; g.lineWidth = 2; g.stroke();
   g.fillStyle = C.fg; g.font = `700 40px ${F_NUM}`; g.textAlign = 'right'; g.fillText(fmt(qty), 290, 524); g.font = `700 24px ${F_JP}`; g.fillText('株', 328, 522); g.textAlign = 'left';
   uiBtn(g, s, 'plus', 348, 474, 70, 70, '＋', { font: `900 40px ${F_NUM}` });
-  const chips = [['q100', '100'], ['q500', '500'], ['q1000', '1000'], ['qmax', '最大'], ['qall', '全部']];
+  const hp = myPos(c.code), hq = hp ? Math.abs(hp.qty) : 0;
+  const chips = [['q100', '100'], ['q500', '500'], ['q1000', '1000'], ['qmax', '最大']];
   chips.forEach(([id, l], i) => uiBtn(g, s, id, 432 + i * 92, 480, 84, 58, l, { font: `700 24px ${F_NUM}`, r: 8 }));
+  uiBtn(g, s, 'qall', 800, 480, 196, 58, hq ? `${hp.qty < 0 ? '売建' : '保有'} ${fmt(hq)}株` : '保有なし', { font: `700 24px ${F_JP}`, r: 8, off: !hq, bg: hq ? 'rgba(242,169,59,.22)' : undefined, fg: hq ? C.amber : undefined });
   g.textAlign = 'right'; g.fillStyle = C.amber; g.font = `700 40px ${F_NUM}`; g.fillText(yen(c.price * qty), W - 28, 598); g.textAlign = 'left';
   uiBtn(g, s, 'buy', 28, 560, 320, 70, `買う ${fmt(qty)}株`, { bg: C.up, fg: '#fff', off: !!block || canB < qty, font: `900 32px ${F_JP}` });
   uiBtn(g, s, 'sell', 360, 560, 320, 70, `売る ${fmt(qty)}株`, { bg: C.down, fg: '#fff', off: !!block || canS < qty, font: `900 32px ${F_JP}` });
@@ -3398,7 +3496,7 @@ function pushMail(key, mb, mail) {
 }
 function genMail(key) {
   const mb = mailBoxOf(key), m = state.minute;
-  const open = MAIL_IDS.filter(s => !(mb.c[s] && mb.c[s].blk));
+  const open = MAIL_IDS.filter(s => !(mb.c[s] && mb.c[s].blk) && !((state.up.mailsec | 0) >= 3 && MAILERS[s].type === 'scam'));
   if (!open.length) return;
   const unmet = open.filter(s => !mb.c[s]);
   let s;
@@ -3459,7 +3557,7 @@ function mailAnswer(key, id, o) {
   const op = mailOpts(x)[o]; if (!op) return;
   if (op.pay) { if (state.cash < op.pay) return; state.cash -= op.pay; fx({ t: 'toast', text: `${nameOf(key)}が「${MAILERS[x.s].name}」に${yen(op.pay)}を支払いました`, cls: 'bad' }); }
   const cc = mb.c[x.s] || (mb.c[x.s] = { rel: 0, blk: false });
-  const before = cc.rel; cc.rel = clamp(cc.rel + op.rel, 0, 100); x.ans = o; x.dr = cc.rel - before;
+  const before = cc.rel, gain = op.rel > 0 ? Math.round(op.rel * MAIL_MUL[clamp(state.up.mailsec | 0, 0, 3)]) : op.rel; cc.rel = clamp(cc.rel + gain, 0, 100); x.ans = o; x.dr = cc.rel - before;
   hudDirty = true;
 }
 /* ---- 新着メールの通知 ---- */
@@ -3507,6 +3605,7 @@ function drawMailTab(g, s, ci) {
     g.fillStyle = P.col; g.beginPath(); g.arc(186, 96, 20, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#0b0f17'; g.font = `900 20px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(P.name)[0], 186, 98); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = C.fg; g.font = `900 24px ${F_JP}`; g.fillText(P.name, 216, 92, W - 420);
+    if ((state.up.mailsec | 0) >= 2 && P.type === 'scam') { g.fillStyle = '#f2c230'; g.font = `900 17px ${F_JP}`; g.fillText('⚠ 業者の可能性が高い', 480, 114); }
     g.fillStyle = C.muted; g.font = `500 16px ${F_JP}`; g.fillText(P.org, 216, 114, 300);
     g.fillStyle = C.muted; g.font = `700 16px ${F_JP}`; g.fillText('友好度', W - 350, 114); relStars(g, W - 292, 108, rel, 18);
     g.fillStyle = C.line; g.fillRect(14, 128, W - 28, 2);
@@ -3546,6 +3645,7 @@ function drawMailTab(g, s, ci) {
     g.fillStyle = P.col; g.beginPath(); g.arc(62, y + 33, 18, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#0b0f17'; g.font = `900 18px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(P.name)[0], 62, y + 35); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = un ? C.fg : C.muted; g.font = `${un ? 900 : 700} 19px ${F_JP}`; g.fillText(P.name, 92, y + 26, 330);
+    if ((state.up.mailsec | 0) >= 2 && P.type === 'scam') { g.font = `900 16px ${F_JP}`; const nw = Math.min(330, g.measureText(P.name).width); rr(g, 98 + nw, y + 9, 64, 22, 11); g.fillStyle = '#f2c230'; g.fill(); g.fillStyle = '#1a1205'; g.fillText('⚠ 怪しい', 104 + nw, y + 26); }
     relStars(g, 440, y + 20, relOf(mb, x.s), 14);
     g.fillStyle = C.faint; g.font = `500 16px ${F_NUM}`; g.textAlign = 'right'; g.fillText(x.tl, W - 44, y + 26); g.textAlign = 'left';
     g.fillStyle = un ? '#d3dbea' : C.muted; g.font = `${un ? 700 : 500} 20px ${F_JP}`; g.fillText(subj, 92, y + 54, W - 260);
@@ -3919,6 +4019,12 @@ function drawRankMon(g) {
   g.fillStyle = C.line; g.fillRect(W / 2, 20, 2, H - 40);
 }
 const newsTagCol = t => t === '緊急' ? '#ff5468' : t === '先行' ? C.amber : t === '決算' ? '#ff8a5c' : t === 'マクロ' ? '#9fd0ff' : t === '夜間' ? '#c9a0ff' : C.muted;
+/* 決算予想サービスの予想（精度はサービスのLv次第。外れるときは逆を言う） */
+function earnGuess(x) {
+  const lv = clamp(state.up.earnsvc | 0, 0, 3); if (!lv || x.tr == null) return null;
+  const ok = (x.r || 0) < EARN_ACC[lv], g = ok ? x.tr : x.tr === 0 ? ((x.r || 0) * 10 % 1 < .5 ? 1 : -1) : -x.tr;
+  return g > 0 ? ['好決算の予想', '#1e8449', '▲'] : g < 0 ? ['悪い決算の予想', '#c0392b', '▼'] : ['予想並みの予想', '#6b7488', '―'];
+}
 function calReflect(x) { return x.t >= T_CLOSE ? ['明日の朝', '#c0392b'] : x.t === T_AM_END ? ['12:30〜', '#c27c0e'] : ['すぐ', '#1e8449']; }
 /* 突出イベントの演出（全員の端末で再生） */
 const BIGFX = { t: 0, text: '', sign: 0, ci: -1 };
@@ -4003,7 +4109,8 @@ function drawCalBoard(g) {
   for (const x of state.calendar) {
     const c = state.cos[x.ci], [lab, lc] = calReflect(x);
     g.fillStyle = x.done ? '#9aa3b2' : '#1b2a4a'; g.font = `700 36px ${F_NUM}`; g.fillText(hhmm(x.t), 40, y);
-    g.font = `900 34px ${F_JP}`; g.fillText(c.short, 190, y, 310);
+    g.font = `900 34px ${F_JP}`; g.fillText(c.short, 190, y, 230);
+    { const gs = !x.done && earnGuess(x); if (gs) { g.fillStyle = gs[1]; g.font = `900 24px ${F_JP}`; g.fillText(`${gs[2]}予想`, 430, y - 4, 80); } }
     if (x.done) { g.fillStyle = '#9aa3b2'; g.font = `700 26px ${F_JP}`; g.fillText('発表済', 520, y); g.strokeStyle = '#c0392b'; g.lineWidth = 4; g.beginPath(); g.moveTo(36, y - 12); g.lineTo(W - 40, y - 12); g.stroke(); }
     else { g.font = `900 26px ${F_JP}`; const tw = g.measureText(lab).width + 28; rr(g, 516, y - 32, tw, 42, 21); g.fillStyle = lc; g.fill(); g.fillStyle = '#fff'; g.fillText(lab, 530, y - 2); g.fillStyle = '#c0392b'; g.font = `700 24px ${F_NUM}`; g.textAlign = 'right'; g.fillText(stationLabel(x.ci), W - 40, y); g.textAlign = 'left'; }
     y += 66;
@@ -4139,7 +4246,7 @@ function deskAction(id) {
   else if (id === 'plus') setQty(LOCAL.qty + 100);
   else if (id === 'q100') setQty(100); else if (id === 'q500') setQty(500); else if (id === 'q1000') setQty(1000);
   else if (id === 'qmax') { const m = maxBuy(c, myKey()); if (m >= 100) setQty(m); else setMsg('現金が足りません', 'err'); }
-  else if (id === 'qall') { const p = myPos(c.code); if (p && p.qty > 0) setQty(p.qty); else setMsg('持ち株なし', 'err'); }
+  else if (id === 'qall') { const p = myPos(c.code); if (p && p.qty) setQty(Math.abs(p.qty)); else setMsg('持ち株なし', 'err'); }
   else if (id === 'buy') trade(1);
   else if (id === 'sell') trade(-1);
   else if (id === 'prof:back') { LOCAL.prof = null; LOCAL.profScroll = 0; renderCoFeed(); }
@@ -4282,7 +4389,7 @@ function currentAct() { if (!LOCAL.panel) return ''; return LOCAL.panel === 'des
 const PERF = { draws: 0, fps: 0, n: 0, t0: 0, low: 0, high: 0 };
 function drawSurface(s) { s.ctx.setTransform(1, 0, 0, 1, 0, 0); s.draw(s.ctx, s); s.tex.needsUpdate = true; s.dirty = false; s.last = performance.now(); PERF.draws++; }
 /* 画面ごとの最短再描画間隔（ms）。座っていないデスクの画面はゆっくりでよい */
-function surfGap(s) { if (s.role === 'main' || s.role === 'info') return SEAT.ci === s.ci ? 0 : 1500; if (s.role === 'front') return 350; if (s.role === 'sign') return 1000; return 400; }
+function surfGap(s) { if ((s.role === 'main' || s.role === 'info' || s.role === 'sign') && stations[s.ci] && !stations[s.ci].grp.visible) return 1e9; if (s.role === 'main' || s.role === 'info') return SEAT.ci === s.ci ? 0 : 1500; if (s.role === 'front') return 350; if (s.role === 'sign') return 1000; return 400; }
 function perfTick(now) {
   if (!PERF.t0) { PERF.t0 = now; return; }
   PERF.n++;
@@ -4433,7 +4540,7 @@ function showModal(kind) {
       <ul class="rulelist">
         <li>ノルマは<b>3営業日ごと</b>。期限の日の<b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
         <li>取引時間は <b>9:00–11:30</b>（前場）と <b>12:30–15:30</b>（後場）。11:30〜12:30は昼休み。</li>
-        <li>毎日の引け後に購買部で装備をレベルアップできる。</li>
+        <li>毎日の引け後に購買部で装備をレベルアップできる。上限まで上げたら<b>会社のレベルアップ</b>でオフィスを広げよう。</li>
         <li>席のモニターの「メール」には情報屋から連絡が来る。丁寧に付き合うと確度の高いリークをくれる。ただし怪しい業者に注意。</li>
         <li>ニュースとSNSで株価が動く。SNSの予想が当たるとフォロワーが増え、投稿が効くようになる。</li>
         <li><b>${GOAL_DAYS}営業日（${GOAL_DAYS / TERM}期）</b>生き残れば上場。</li>
@@ -4501,14 +4608,16 @@ function showModal(kind) {
     const gu = $('#mGiveup'); if (gu) gu.onclick = () => request('ctl', { a: 'over' });
   } else if (kind === 'shop') {
     const nd = state.day + 1, nextQuota = quotaFor(nd), newTerm = isDeadline(state.day), aNow = assets();
-    const pips = (lv, max) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</span>`;
+    const pips = (lv, max, cap) => `<span class="pips">${Array.from({ length: max }, (_, i) => `<i class="${i < lv ? 'on' : i >= (cap == null ? max : cap) ? 'lock' : ''}"></i>`).join('')}</span>`;
+    const clvCard = () => { const cl = state.up.clv || 1, nx = CLV[cl + 1];
+      return `<div class="clvcard"><div class="clvh"><span class="clvn">会社Lv <b>${cl}</b></span>${pips(cl, CLV_MAX)}</div>${nx ? `<p>次の <b>Lv${cl + 1}</b>：${esc(nx.eff)}</p><div class="row"><span class="price">${yen(nx.price)}</span><button class="btn primary" type="button" data-buy="clv" ${state.cash < nx.price ? 'disabled' : ''}>${state.cash < nx.price ? '現金不足' : `会社をLv${cl + 1}にする`}</button></div>` : '<p>会社レベルは最大です。</p>'}</div>`; };
     const card = u => {
-      const lv = u.lv(state), can = upCanLevel(u, state), price = can ? upPrice(u, state) : 0, poor = can && state.cash < price;
+      const lv = u.lv(state), can = upCanLevel(u, state), price = can ? upPrice(u, state) : 0, poor = can && state.cash < price, needC = !can ? upNextClv(u, state) : 0;
       const cur = u.consumable ? (lv ? '所持中（1枚）' : '未所持') : lv ? `Lv${lv}：${u.lvs[lv - 1].eff}` : '未導入';
-      const nxt = !can ? (u.consumable ? '' : '最大レベル') : u.consumable ? u.eff : `<b>Lv${lv + 1}</b>　${u.lvs[lv].eff}`;
+      const nxt = !can ? (u.consumable ? '' : needC ? `<b>Lv${lv + 1}</b>　${u.lvs[lv].eff}<br><small class="lock">🔒 会社Lv${needC}で解放</small>` : '最大レベル') : u.consumable ? u.eff : `<b>Lv${lv + 1}</b>　${u.lvs[lv].eff}`;
       const after = aNow - price, warn = can && !poor && aNow >= nextQuota && after < nextQuota ? `<small class="warn">買うとノルマ割れ（あと ${yen(nextQuota - after)}）</small>` : '';
-      const label = !can ? (u.consumable ? '所持中' : 'MAX') : poor ? '現金不足' : u.consumable ? '購入' : lv === 0 ? '導入' : `Lv${lv + 1}に上げる`;
-      return `<div class="item${can ? '' : ' maxed'}"><h4><span>${esc(u.name)}</span>${u.consumable ? '' : pips(lv, u.max)}</h4><p class="cur">${cur}</p>${nxt ? `<p class="nx">${nxt}</p>` : ''}${warn}<div class="row"><span class="price">${can ? yen(price) : ''}</span><button class="btn" type="button" data-buy="${u.id}" ${!can || poor ? 'disabled' : ''}>${label}</button></div></div>`;
+      const label = !can ? (u.consumable ? '所持中' : needC ? `会社Lv${needC}が必要` : 'MAX') : poor ? '現金不足' : u.consumable ? '購入' : lv === 0 ? '導入' : `Lv${lv + 1}に上げる`;
+      return `<div class="item${can ? '' : needC ? ' locked' : ' maxed'}"><h4><span>${esc(u.name)}</span>${u.consumable ? '' : pips(lv, u.max, upCap(u, state))}</h4><p class="cur">${cur}</p>${nxt ? `<p class="nx">${nxt}</p>` : ''}${warn}<div class="row"><span class="price">${can ? yen(price) : ''}</span><button class="btn" type="button" data-buy="${u.id}" ${!can || poor ? 'disabled' : ''}>${label}</button></div></div>`;
     };
     const k = myKey(), meReady = !!state.ready[k];
     const members = (state.players || []).filter(p => p.seat >= 0), nReady = members.filter(p => state.ready[p.by || p.peer]).length;
@@ -4517,6 +4626,7 @@ function showModal(kind) {
       <h2>装備をレベルアップ</h2>
       <div class="kv"><div><span>会社の現金（買い物に使える）</span><span>${yen(state.cash)}</span></div><div><span>総資産</span><span>${yen(assets())}</span></div><div><span>${newTerm ? '次の' : ''}第${termOf(nd)}期ノルマ（〆DAY ${deadlineOf(nd)}）</span><span style="color:var(--amber)">${yen(nextQuota)}</span></div></div>
       <p class="owned">買い物は会社の現金から払います。払った分だけ総資産も減ります。${isMulti() ? '誰が買っても全員の装備になります。' : ''}</p>
+      ${clvCard()}
       <div class="shop">${UPGRADES.map(card).join('')}</div>
       ${(() => { const f = peekCred(k).fol; return `<p class="h3">SNS：${esc(nameOf(k))}のアカウント（フォロワー ${fmt(f)}・影響力 ${(postPower(f) * 100).toFixed(1)}%）</p><div class="folbuy">${FOL_PACKS.map((n, i) => { const pr = folPrice(f, n); return `<button class="btn" type="button" data-fol="${i}" ${state.cash < pr ? 'disabled' : ''}><b>+${fmt(n)}人</b><span>${yen(pr)}</span></button>`; }).join('')}</div><p class="owned">フォロワーは買った人のアカウントに付きます。支払いは会社の現金から。</p>`; })()}
       ${isMulti() ? seatsHTML() : ''}
@@ -4702,7 +4812,7 @@ function start(data) {
   if (data.role === 'client' && data.code) {
     newGame('solo'); afterStateReplaced(); attract = false;
     resume = { role: 'client', code: data.code }; showModal('joining');
-  } else if (data.state && data.state.v === 8) {
+  } else if (data.state && data.state.v === 9) {
     state = data.state; if (typeof data.soundOn === 'boolean') soundOn = data.soundOn;
     if (data.local) { LOCAL.sel = data.local.sel | 0; LOCAL.qty = data.local.qty || 100; }
     afterStateReplaced(); attract = false;
