@@ -1053,7 +1053,7 @@ function upCanLevel(u, s) { return u.lv(s) < upCap(u, s); }
 function upNextClv(u, s) { const lv = u.lv(s); if (!u.cap || lv >= u.max) return 0; for (let k = (s.up.clv || 1); k < 5; k++) if (u.cap[k] > lv) return k + 1; return 0; }
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
-const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v11';
+const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v12';
 const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail', 'summon', 'cleared2', 'infected'];
 
 /* =========================================================
@@ -1083,7 +1083,7 @@ function initCo(d, i) {
 }
 function newGame(mode) {
   state = {
-    v: 11, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
+    v: 12, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
     cash: START_CASH, quota: quotaFor(1), pos: {}, watch: {}, coPosts: {}, cred: {},
     up: { clv: 1, lines: 0, sokuho: 0, margin: false, mlv: 0, lev: 1, analyst: false, gyoukai: 0, zerofee: 0, snsteam: 0, mailsec: 0, earnsvc: 0, grace: 0 },
     cos: COMPANIES.map(initCo), idxPrev: 0, idxIntra: [],
@@ -1236,6 +1236,7 @@ function ctl(d, key, isLocal) {
     }
   }
   else if (a === 'mailans') { mailAnswer(key, d.id | 0, d.o | 0); }
+  else if (a === 'mailread') { const ids = new Set((Array.isArray(d.ids) ? d.ids : []).slice(0, 60).map(v => v | 0)); for (const x of mailBoxOf().box) if (ids.has(x.id)) x.rd = 1; hudDirty = true; }
   else if (a === 'virus') {
     const ci = d.ci | 0, mb = mailBoxOf(key), x = mb.box.find(y => y.id === (d.id | 0)); if (!x || x.k !== 'virus' || x.inf || !state.cos[ci]) return;
     if (mb.c[x.s] && mb.c[x.s].blk) return;
@@ -1332,7 +1333,7 @@ function onSnap(msg) {
   if (b.got >= b.n) {
     delete NET.snaps[key];
     let s; try { s = JSON.parse(b.parts.join('')); } catch (e) { return; }
-    if (!s || s.v !== 11 || !Array.isArray(s.cos)) return;
+    if (!s || s.v !== 12 || !Array.isArray(s.cos)) return;
     state = s; NET.hostPeer = b.peer; NET.synced = true; NET.lastSeq = b.seq; NET.electing = false;
     for (const d2 of NET.tickBuf.splice(0)) if (d2.seq > b.seq) applyTick(d2);
     clearTimeout(NET.joinTimeout); clearInterval(NET.helloIv); NET.helloIv = null;
@@ -2180,7 +2181,7 @@ function saveGame() {
   if (NET.role === 'client') return;
   try { const s = JSON.parse(JSON.stringify(state)); s.players = []; s.ready = {}; localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { }
 }
-function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 11 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
+function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 12 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
 
 /* =========================================================
    HUD
@@ -2800,7 +2801,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v35 P2P';
+const GAME_VERSION = 'v36 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -3694,7 +3695,7 @@ MAILERS.gwp.chat.push(['【重要】最終のご案内', 'これが最後のご�
 MAILERS.miki.chat.push(['ねえ〜無視しないで💦', '返事まだ〜？さみしいよ〜🥺'], ['見て見て〜', '新しいネイルした〜💅 かわいい？？'], ['ちょっと相談〜', '実はいい投資話があるんだけど…今度会えない？💕'], ['おやすみ〜', 'もう寝る？わたしはまだ起きてるよ〜🌙']);
 const MAIL_ADDR = { yamaneko: 'info@yamaneko-unyu.delivery-check.xyz', keiri: 'keiri@kabutodesk-co.jp', secure: 'alert@secure-center-support.top', hayase: 'r.hayase@aoba-sec.co.jp', okochi: 'm.okochi@kanreki-mail.jp', minobe: 'minobe@kabuto-shimbun.jp', kiriya: 'kiriya.kengyo@freemail.ne.jp', takumi: 'god_takumi_777@bakueki-salon.xyz', gwp: 'info@global-wealth-partners.biz', miki: 'miki.love.2525@kawaii-mail.xyz', sennin: 'kabu-sennin@yamaoku.or.jp', mrx: 'x@0x0.invalid' };
 /* プレイヤーのアドレス：席番号ごとに別 */
-function addrOf(key) { return `dealer${Math.max(0, seatOfKey(key)) + 1}@kabutodesk.co.jp`; }
+function addrOf() { return 'dealing@kabutodesk.co.jp'; }
 /* 送信：たまに同じメールが複数のプレイヤーに届く（業者は一斉送信しがち） */
 function sendMail(key, spec) {
   const P = MAILERS[spec.s];
@@ -3703,10 +3704,11 @@ function sendMail(key, spec) {
   if (others.length && spec.k !== 'intro' && spec.k !== 'ask' && Math.random() < (P.type === 'scam' ? .5 : .18)) to = to.concat(shuffle(others.slice()).slice(0, ri(1, others.length)));
   for (const k of to) { const b = mailBoxOf(k); if (!b.c[spec.s]) b.c[spec.s] = { rel: 0, blk: false }; pushMail(k, b, Object.assign({}, spec, to.length > 1 ? { to } : {})); }
 }
-const mailBoxOf = key => { const all = state.mail = state.mail || {}; return all[key] || (all[key] = { c: {}, box: [], seq: 1, next: 0 }); };
-const peekBox = key => (state && state.mail && state.mail[key]) || { c: {}, box: [], seq: 1, next: 0 };
+const MAILBOX = 'co';
+const mailBoxOf = () => { const all = state.mail = state.mail || {}; return all[MAILBOX] || (all[MAILBOX] = { c: {}, box: [], seq: 1, next: 0 }); };
+const peekBox = () => (state && state.mail && state.mail[MAILBOX]) || { c: {}, box: [], seq: 1, next: 0 };
 const relOf = (mb, s) => (mb.c[s] && mb.c[s].rel) || 0;
-function mailMembers() { return isMulti() ? (state.players || []).filter(p => p.seat >= 0).map(p => p.by || p.peer) : ['me']; }
+function mailMembers() { return [MAILBOX]; }
 /* 次に起きる材料（先の予定）から、リークに使えるものを探す */
 function findLeakEvent(m, lo, hi) {
   const cand = [];
@@ -3829,6 +3831,7 @@ function mailAnswer(key, id, o) {
   const op = mailOpts(x)[o]; if (!op) return;
   if (op.pay) { if (state.cash < op.pay) return; state.cash -= op.pay; fx({ t: 'toast', text: `${nameOf(key)}が「${MAILERS[x.s].name}」に${yen(op.pay)}を支払いました`, cls: 'bad' }); }
   const cc = mb.c[x.s] || (mb.c[x.s] = { rel: 0, blk: false });
+  x.by = String(key).slice(0, 80); x.rd = 1;
   const before = cc.rel, gain = op.rel > 0 ? Math.round(op.rel * upEff.mailMul(state.up.mailsec | 0)) : op.rel; cc.rel = clamp(cc.rel + gain, 0, 100); x.ans = o; x.dr = cc.rel - before;
   hudDirty = true;
 }
@@ -3844,7 +3847,9 @@ function checkMailNotif() {
     notifyMail(x); sfx('mail');
   }
 }
-function mailUnread() { const key = myKey(), mb = peekBox(key), rd = LOCAL.mailRead || {}; return mb.box.filter(x => !rd[x.id] && !(mb.c[x.s] && mb.c[x.s].blk)).length; }
+function mailUnread() { const mb = peekBox(); return mb.box.filter(x => !x.rd && !(mb.c[x.s] && mb.c[x.s].blk)).length; }
+const RD_SENT = new Set();
+function markRead(ids) { ids = ids.filter(id => !RD_SENT.has(id)); if (!ids.length) return; ids.forEach(id => RD_SENT.add(id)); request('ctl', { a: 'mailread', ids }); }
 function notifyMail(x) {
   const box = $('#notifs'); if (!box) return;
   const P = MAILERS[x.s], [subj] = mailText(x);
@@ -3856,7 +3861,7 @@ function notifyMail(x) {
   setTimeout(dismiss, 9000);
 }
 function openMail(id) {
-  if (SEAT.ci >= 0 && LOCAL.panel === 'desk') { LOCAL.itab = 'mail'; LOCAL.mailOpen = id; (LOCAL.mailRead = LOCAL.mailRead || {})[id] = 1; renderCoFeed(); pushDeskUI(); }
+  if (SEAT.ci >= 0 && LOCAL.panel === 'desk') { LOCAL.itab = 'mail'; LOCAL.mailOpen = id; markRead([id]); renderCoFeed(); pushDeskUI(); }
   else logLine('メールは席のモニターの「メール」タブで読めます', 'team');
 }
 /* ---- 右モニター：メールタブ ---- */
@@ -3867,10 +3872,11 @@ function drawMailTab(g, s, ci, owner, openId) {
   const W = INFO_W, H = INFO_H, live = s && s.live;
   const key = live ? myKey() : owner;
   if (!key) { g.fillStyle = C.faint; g.font = `700 28px ${F_JP}`; g.textAlign = 'center'; g.fillText('空席', W / 2, H / 2); g.textAlign = 'left'; return; }
-  const mb = peekBox(key), rd = live ? (LOCAL.mailRead || (LOCAL.mailRead = {})) : {};
+  const mb = peekBox(), rd = {}; for (const x of mb.box) if (x.rd) rd[x.id] = 1;
   const list = mb.box.filter(x => !(mb.c[x.s] && mb.c[x.s].blk)).slice().reverse();
   const openNow = live ? LOCAL.mailOpen : openId;
   const cur = openNow != null ? mb.box.find(x => x.id === openNow) : null;
+  if (live && cur && !cur.rd) markRead([cur.id]);
   if (live && cur && cur.k === 'virus' && !cur.inf && !(mb.c[cur.s] && mb.c[cur.s].blk) && !(LOCAL.virDone || {})[cur.id] && !(LOCAL.vir && LOCAL.vir.id === cur.id)) LOCAL.vir = { id: cur.id, ci, t0: performance.now() };
   if (cur && MAILERS[cur.s]) {
     const P = MAILERS[cur.s], [subj, body] = mailText(cur), rel = relOf(mb, cur.s), blk = mb.c[cur.s] && mb.c[cur.s].blk;
@@ -3886,7 +3892,7 @@ function drawMailTab(g, s, ci, owner, openId) {
     g.fillStyle = C.line; g.fillRect(14, 128, W - 28, 2);
     { const tos = cur.to && cur.to.length > 1 ? cur.to : [key];
       g.fillStyle = C.faint; g.font = `600 15px ${F_JP}`; g.fillText('宛先', 24, 152);
-      g.fillStyle = C.muted; g.font = `600 15px ${F_NUM}`; g.fillText(tos.map(k => `${k === myKey() ? 'あなた' : nameOf(k)} <${addrOf(k)}>`).join('、'), 66, 152, W - 90); }
+      g.fillStyle = C.muted; g.font = `600 15px ${F_NUM}`; g.fillText(`カブトデスク証券 ディーリング部 <${addrOf()}>`, 66, 152, W - 90); }
     g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText(subj, 24, 188, W - 150);
     g.fillStyle = C.faint; g.font = `500 18px ${F_NUM}`; g.textAlign = 'right'; g.fillText(cur.tl, W - 24, 188); g.textAlign = 'left';
     g.fillStyle = '#d3dbea'; g.font = `500 23px ${F_JP}`;
@@ -3912,7 +3918,7 @@ function drawMailTab(g, s, ci, owner, openId) {
     } else {
       g.fillStyle = C.muted; g.font = `700 20px ${F_JP}`;
       const op = cur.ans >= 0 ? mailOpts(cur)[cur.ans] : null;
-      g.fillText(blk ? 'ブロック中の相手です' : op ? `返信済み：${op.l}${cur.dr ? `（友好度 ${cur.dr > 0 ? '+' : ''}${cur.dr}）` : ''}` : '返信しなかった', 24, 512, W - 48);
+      g.fillText(blk ? 'ブロック中の相手です' : op ? `返信済み（${cur.by ? nameOf(cur.by) : ''}）：${op.l}${cur.dr ? `（友好度 ${cur.dr > 0 ? '+' : ''}${cur.dr}）` : ''}` : '返信しなかった', 24, 512, W - 48);
     }
     return;
   }
@@ -3964,7 +3970,7 @@ function drawDeskInfo(g, s, ci) {
     const hov = s.live && UI.hover && UI.hover.s === s && UI.hover.id === 'tab:' + id;
     g.fillStyle = on ? (id === 'news' ? C.amber : C.sns) : hov ? '#1d2740' : '#121a2a'; g.fillRect(x + 2, 0, tw - 4, 64);
     g.fillStyle = on ? (id === 'news' ? '#1e1405' : '#fff') : C.muted; g.font = `900 26px ${F_JP}`; g.textAlign = 'center'; g.fillText(l, x + tw / 2, 42, tw - 16); g.textAlign = 'left';
-    if (id === 'mail' && unreadM) { g.fillStyle = C.up; g.beginPath(); g.arc(x + tw - 22, 16, 13, 0, Math.PI * 2); g.fill(); g.fillStyle = '#fff'; g.font = `900 17px ${F_NUM}`; g.textAlign = 'center'; g.fillText(String(Math.min(9, unreadM)), x + tw - 22, 22); g.textAlign = 'left'; }
+    if (id === 'mail' && unreadM) { const t = String(unreadM); g.font = `900 17px ${F_NUM}`; const bw = Math.max(26, g.measureText(t).width + 14); rr(g, x + tw - 10 - bw, 3, bw, 26, 13); g.fillStyle = C.up; g.fill(); g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(t, x + tw - 10 - bw / 2, 22); g.textAlign = 'left'; }
   });
   if (tab === 'co') { const pk = mine ? LOCAL.prof : du.prof; if (pk) drawProfile(g, s, pk); else { const r = drawTimeline(g, snsForCo(ci), 16, 78, W - 48, H - 86, 24, c, 10, { s, off: mine ? LOCAL.coScroll || 0 : 0 }); if (mine) LOCAL.coScroll = Math.min(LOCAL.coScroll || 0, Math.max(0, r.total - 1)); } }
   else if (tab === 'news') {
@@ -4602,8 +4608,8 @@ function deskAction(id) {
   else if (id.startsWith('dir:')) { LOCAL.pdir = +id.slice(4); renderCoFeed(); }
   else if (id.startsWith('tpl:')) sendPost(+id.slice(4));
   else if (id === 'mail:back') { LOCAL.mailOpen = null; renderCoFeed(); }
-  else if (id === 'mail:readall') { const rd = LOCAL.mailRead = LOCAL.mailRead || {}; for (const x of peekBox(myKey()).box) rd[x.id] = 1; const nb = $('#notifs'); if (nb) nb.querySelectorAll('.ncard.mail').forEach(el => el.remove()); renderCoFeed(); }
-  else if (id.startsWith('mail:open:')) { LOCAL.mailOpen = +id.slice(10); (LOCAL.mailRead = LOCAL.mailRead || {})[LOCAL.mailOpen] = 1; renderCoFeed(); }
+  else if (id === 'mail:readall') { markRead(peekBox().box.filter(x => !x.rd).map(x => x.id)); const nb = $('#notifs'); if (nb) nb.querySelectorAll('.ncard.mail').forEach(el => el.remove()); renderCoFeed(); }
+  else if (id.startsWith('mail:open:')) { LOCAL.mailOpen = +id.slice(10); markRead([LOCAL.mailOpen]); renderCoFeed(); }
   else if (id.startsWith('mail:ans:')) { const [, , mid, o] = id.split(':'); request('ctl', { a: 'mailans', id: +mid, o: +o }); }
   else if (id.startsWith('mail:blk:')) { const sid = id.slice(9), mb = peekBox(myKey()), b = !!(mb.c[sid] && mb.c[sid].blk); request('ctl', { a: 'mailblk', s: sid, v: !b }); if (!b) LOCAL.mailOpen = null; renderCoFeed(); }
   else if (id === 'folshop') { LOCAL.folShop = !LOCAL.folShop; renderCoFeed(); }
@@ -4896,7 +4902,7 @@ function showModal(kind) {
         <li>ノルマは<b>3営業日ごと</b>。期限の日の<b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
         <li>取引時間は <b>前半戦 9:00〜11:30</b> と <b>後半戦 12:30〜15:30</b>。11:30〜12:30は昼休み。</li>
         <li>毎日の引け後に購買部で装備をレベルアップできる。上限まで上げたら<b>会社のレベルアップ</b>で上限を広げよう。</li>
-        <li>席のモニターの「メール」には情報屋から連絡が来る。丁寧に付き合うと確度の高いリークをくれる。ただし怪しい業者に注意。</li>
+        <li>席のモニターの「メール」（会社宛て・全員で共通）には情報屋から連絡が来る。丁寧に付き合うと確度の高いリークをくれる。ただし怪しい業者に注意。</li>
         <li>ニュースとSNSで株価が動く。SNSの予想が当たるとフォロワーが増え、投稿が効くようになる。</li>
         <li><b>${GOAL_DAYS}営業日（${GOAL_DAYS / TERM}期）</b>生き残れば上場。会社を<b>世界一（会社Lv6）</b>にすればクリア。</li>
       </ul>
@@ -5172,7 +5178,7 @@ function start(data) {
   if (data.role === 'client' && data.code) {
     newGame('solo'); afterStateReplaced(); attract = false;
     resume = { role: 'client', code: data.code }; showModal('joining');
-  } else if (data.state && data.state.v === 11) {
+  } else if (data.state && data.state.v === 12) {
     state = data.state; if (typeof data.soundOn === 'boolean') soundOn = data.soundOn;
     if (data.local) { LOCAL.sel = data.local.sel | 0; LOCAL.qty = data.local.qty || 100; }
     afterStateReplaced(); attract = false;
