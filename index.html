@@ -2691,7 +2691,7 @@ function doPost(key, ci, dir, text) {
   const nRep = (cr.fol < 100 ? 0 : cr.fol < 1000 ? 1 : cr.fol < 10000 ? 2 : 3) + (Math.random() < .5 ? 1 : 0);
   const reps = dir > 0 ? ['マジ？乗ってみる', 'それ本当なら買い', '監視しとく', 'ソースは？', 'ほんとかな'] : ['え、そうなの？', '一回逃げとく', '本当なら売り', 'ソースは？', 'デマじゃない？'];
   for (let k = 0; k < nRep; k++) postSNS('a' + ri(0, AMB_NAMES.length - 1), pick(reps), true, ci);
-  cr.act = (cr.act || []).concat([{ ci, dir, p0: c.price, t0: postClock(), tl: hhmm(state.minute) }]).slice(-4);
+  cr.act = (cr.act || []).concat([{ ci, dir, p0: c.price, t0: postClock(), tl: hhmm(state.minute), pw: isOpen(state.minute) ? strength : strength * .35, gp: !isOpen(state.minute) }]).slice(-4);
   markDirty(ci); hudDirty = true;
   return { ok: true, msg: '投稿しました' };
 }
@@ -2718,7 +2718,7 @@ function postTick(m) {
     const act = cc.act || [], keep = [];
     for (const a of act) {
       const c = state.cos[a.ci]; if (!c) continue;
-      const el = now - a.t0, rs = (c.price / a.p0 - 1) * a.dir;
+      const el = now - a.t0, own = a.pw ? (a.gp ? a.pw : a.pw * Math.min(1, el / 5) - a.pw * clamp((el - 20) / 30, 0, 1)) : 0, rs = (c.price / a.p0 - 1) * a.dir - own;
       if (rs >= HIT_MOVE) { settlePost(key, cc, a, 1, true); continue; }
       if (rs <= -HIT_MOVE) { settlePost(key, cc, a, -1, true); continue; }
       if (el >= POST_WINDOW) { settlePost(key, cc, a, rs > .003 ? 1 : rs < -.003 ? -1 : 0, false); continue; }
@@ -2788,7 +2788,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v31 P2P';
+const GAME_VERSION = 'v32 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -4102,7 +4102,7 @@ function drawAcctTab(g, s, ci, who) {
   rr(g, 20, 258, W - 40, 40, 8); g.fillStyle = '#111827'; g.fill();
   if (!act.length) { g.fillStyle = C.faint; g.font = `500 20px ${F_JP}`; g.fillText('予想中の投稿なし', 34, 285); }
   else {
-    const a = act[act.length - 1], o = state.cos[a.ci], rs = (o.price / a.p0 - 1) * a.dir, left = Math.max(0, POST_WINDOW - (now - a.t0));
+    const a = act[act.length - 1], o = state.cos[a.ci], el0 = now - a.t0, own0 = a.pw ? (a.gp ? a.pw : a.pw * Math.min(1, el0 / 5) - a.pw * clamp((el0 - 20) / 30, 0, 1)) : 0, rs = (o.price / a.p0 - 1) * a.dir - own0, left = Math.max(0, POST_WINDOW - (now - a.t0));
     g.fillStyle = C.muted; g.font = `700 19px ${F_JP}`; g.fillText('予想中', 34, 285);
     g.fillStyle = C.fg; g.font = `700 21px ${F_JP}`; g.fillText(`${o.short} ${a.dir > 0 ? '▲' : '▼'}`, 110, 285, 200);
     /* 当たり（右端）〜外れ（左端）のメーター */
