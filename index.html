@@ -261,6 +261,8 @@ body.bosscut #lockHint,body.bosscut #cross,body.bosscut #prompt,body.bosscut .fp
 #blackout{position:fixed;inset:0;z-index:25;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px;text-align:center}
 #blackout.flash{background:#fff;transition:none}
 #blackout.dark{background:#000;transition:background .25s}
+#blackout.whiteout{background:#fff;animation:wout .9s ease-out}
+@keyframes wout{from{background:rgba(255,255,255,0)}to{background:#fff}}
 #boText{color:#8a93a8;font-size:15px;margin:0;min-height:1.5em}
 #boBtns:empty{display:none}
 @media (prefers-reduced-motion:reduce){#bossHint{animation:none}#blackout.flash{background:#000}}
@@ -977,18 +979,19 @@ const NOISE = ['含み損が友達。', 'ナンピンしたら底が抜けた', 
 const CLV = [null,
   { price: 0, eff: '創業時' },
   { price: 500000, eff: '購買のレベル上限が上がる' },
-  { price: 1200000, eff: 'オフィス拡張：左ウィング開放（デスク3台分）＋購買の上限アップ' },
-  { price: 2800000, eff: 'オフィス拡張：右ウィング開放（デスク3台分）＋購買の上限アップ' },
+  { price: 1200000, eff: 'オフィスの左側にデスクを置けるようになる（デスク増設Lv3）＋購買の上限アップ' },
+  { price: 2800000, eff: 'オフィスの右側にもデスクを置けるようになる（デスク増設Lv4）＋購買の上限アップ' },
   { price: 6000000, eff: '購買のレベル上限がすべて最大に' },
+  { price: 30000000, eff: '世界一の企業へ。社長室に呼ばれる（クリア）' },
 ];
-const CLV_MAX = 5, MARGIN_LEV = [1, 1, 1.5, 2, 3], SOKU_LEAD = [0, 2, 4, 6, 8, 11], LEAK_ADD = [0, .08, .16, .26, .38], FEE_RATE = [.001, .0007, .0004, 0], FEE_MIN = [100, 70, 40, 0], POST_CD = [10, 8, 6, 4], MAIL_MUL = [1, 1.3, 1.3, 1.6], EARN_ACC = [0, .62, .76, .9];
+const CLV_MAX = 6, MARGIN_LEV = [1, 1, 1.5, 2, 3], SOKU_LEAD = [0, 2, 4, 6, 8, 11], LEAK_ADD = [0, .08, .16, .26, .38], FEE_RATE = [.001, .0007, .0004, 0], FEE_MIN = [100, 70, 40, 0], POST_CD = [10, 8, 6, 4], MAIL_MUL = [1, 1.3, 1.3, 1.6], EARN_ACC = [0, .62, .76, .9];
 /* 購買部：Lv1は安く、会社レベルごとに上限が1〜2段ずつ開く（cap は会社Lv1〜5での上限） */
 const UPGRADES = [
   { id: 'desk', name: 'デスク増設', max: 4, cap: [1, 2, 3, 4, 4], lv: s => s.up.lines | 0, set: (s, l) => { s.up.lines = l; }, lvs: [
     { price: 60000, eff: '後ろにデスク2台。千草食品・凪浜エナジーを取引できる' },
     { price: 150000, eff: 'さらに2台。碧海不動産・ツクヨミ宇宙を取引できる' },
-    { price: 400000, eff: '左ウィングに3台。カザミ精機・ユメミル映像・ハルカゼ電力' },
-    { price: 800000, eff: '右ウィングに3台。シラユキ化粧品・ホシミ証券・イナズマモーター' }] },
+    { price: 400000, eff: 'オフィスの左側に3台。カザミ精機・ユメミル映像・ハルカゼ電力' },
+    { price: 800000, eff: 'オフィスの右側に3台。シラユキ化粧品・ホシミ証券・イナズマモーター' }] },
   { id: 'sokuho', name: '速報端末', max: 5, cap: [1, 2, 3, 4, 5], lv: s => s.up.sokuho | 0, set: (s, l) => { s.up.sokuho = l; }, lvs: [
     { price: 40000, eff: 'ニュースを株価が動く約2分前に受信（先行配信）' },
     { price: 100000, eff: '約4分前に受信' },
@@ -1030,8 +1033,8 @@ function upCanLevel(u, s) { return u.lv(s) < upCap(u, s); }
 function upNextClv(u, s) { const lv = u.lv(s); if (!u.cap || lv >= u.max) return 0; for (let k = (s.up.clv || 1); k < 5; k++) if (u.cap[k] > lv) return k + 1; return 0; }
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
-const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v9';
-const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail'];
+const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v10';
+const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail', 'summon', 'cleared2'];
 
 /* =========================================================
    状態
@@ -1060,7 +1063,7 @@ function initCo(d, i) {
 }
 function newGame(mode) {
   state = {
-    v: 9, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
+    v: 10, mode: mode || 'solo', day: 1, minute: T_PRE, phase: 'title', speed: 1, paused: false,
     cash: START_CASH, quota: quotaFor(1), pos: {}, watch: {}, coPosts: {}, cred: {},
     up: { clv: 1, lines: 0, sokuho: 0, margin: false, mlv: 0, lev: 1, analyst: false, gyoukai: 0, zerofee: 0, snsteam: 0, mailsec: 0, earnsvc: 0, grace: 0 },
     cos: COMPANIES.map(initCo), idxPrev: 0, idxIntra: [],
@@ -1135,7 +1138,7 @@ function execFx(o) {
     case 'close': if (NET.role === 'client') closeCandles(); break;
     case 'big': bigFx(o); break;
     case 'shop': toast(`${nameOf(o.who)}が「${o.name}」を導入しました`, 'good'); sfx('coin'); break;
-    case 'knock': if (o.who !== myKey()) sfx('knock'); setTimeout(() => { if (state.phase === 'boss') { sfx('creak'); setSub('社長「……入れ」'); setTimeout(() => { if (!BQ.stage) setSub(''); }, 1800); } }, 700); break;
+    case 'knock': if (o.who !== myKey()) sfx('knock'); setTimeout(() => { if (state.phase === 'boss' || (BQ.active && BQ.mode === 'praise')) { sfx('creak'); setSub(state.phase === 'boss' ? '社長「……入れ」' : '社長「入りたまえ」'); setTimeout(() => { if (!BQ.stage) setSub(''); }, 1800); } }, 700); break;
   }
 }
 function ledgerValue(k) { const v = state[k]; return v === undefined ? null : v; }
@@ -1222,7 +1225,8 @@ function ctl(d, key, isLocal) {
     fx({ t: 'toast', text: `${nameOf(key)}がフォロワーを${fmt(n)}人購入（${yen(price)}）`, cls: 'team' }); fx({ t: 'sfx', k: 'coin' });
     hudDirty = true; markAllDirty(); for (const st of stations) st.info.dirty = true; if (state.phase === 'shop') refreshModal();
   }
-  else if (a === 'knock') { if (state.phase === 'boss' && state.bossDoor !== 'open') { state.bossDoor = 'open'; fx({ t: 'knock', who: key }); } }
+  else if (a === 'knock') { if ((state.phase === 'boss' || (state.phase === 'market' && state.summon)) && state.bossDoor !== 'open') { state.bossDoor = 'open'; fx({ t: 'knock', who: key }); } }
+  else if (a === 'praised') { if (state.summon) { if (!state.cleared2) fx({ t: 'toast', text: `${nameOf(key)}が社長に褒められた！ カブトデスク証券は世界一の企業に`, cls: 'good' }); state.cleared2 = true; saveGame(); } }
   else if (a === 'punched') {
     if (state.phase !== 'boss') return;
     state.punched = state.punched || {}; state.punched[key] = 1;
@@ -1302,7 +1306,7 @@ function onSnap(msg) {
   if (b.got >= b.n) {
     delete NET.snaps[key];
     let s; try { s = JSON.parse(b.parts.join('')); } catch (e) { return; }
-    if (!s || s.v !== 9 || !Array.isArray(s.cos)) return;
+    if (!s || s.v !== 10 || !Array.isArray(s.cos)) return;
     state = s; NET.hostPeer = b.peer; NET.synced = true; NET.lastSeq = b.seq; NET.electing = false;
     for (const d2 of NET.tickBuf.splice(0)) if (d2.seq > b.seq) applyTick(d2);
     clearTimeout(NET.joinTimeout); clearInterval(NET.helloIv); NET.helloIv = null;
@@ -1435,6 +1439,37 @@ function runBuzz(it) {
   postSNS('kami', text, false, 'all'); postSNS('kami', text, true, it.ci);
   addImpact(c, it.dir * rand(.08, .14), 'pump');
   bigAlert(`億トレ神（86万フォロワー）が #${c.code} ${c.short} を${it.dir > 0 ? '買い煽り' : '売り煽り'}`, it.ci, it.dir);
+}
+function flipFollow(e, c) {
+  const m = state.minute, up = e.m > 0;
+  const pool = up ? ['え、なんで下がるの!?', '好材料で売られるの意味わからん', '材料出尽くしってやつ？', '握力試されてる', '好決算なのに…'] : ['え、悪いニュースなのに上がってる…', '空売り勢の買い戻し？', 'わけがわからないよ', 'これが相場か', '悪材料出尽くし？'];
+  for (let k = 0; k < 3; k++) REACTQ.push({ m: m + ri(7, 14), ch: 'all', text: `#${c.code} ${c.short} ${pick(pool)}` });
+  for (let k = 0; k < 3; k++) REACTQ.push({ m: m + ri(7, 14), ch: c.i, text: pick(pool) });
+  scheduleItem({ t: m + ri(15, 22), a: 'tnews', ci: c.i, s: up ? -1 : 1, tag: 'ニュース',
+    text: up ? `${c.name}、好材料でも売られる　「材料出尽くし」の声` : `${c.name}、悪材料でも買われる　「悪材料出尽くし」との見方`,
+    body: up ? `${c.name}は好材料の発表後、逆に売られる展開となった。市場関係者は「発表前から期待で買われていたぶん、利益確定の売りが一気に出た」と分析している。` : `${c.name}は悪材料の発表後、逆に買われる展開となった。市場関係者は「悪いニュースは織り込み済みで、空売りの買い戻しが入った」と話している。` });
+}
+/* 誰も予想できないトラブル（1日に1回あるかどうか） */
+function runTrouble(it) {
+  const c = state.cos[it.ci]; if (!c || !powered(c.i) || !isOpen(state.minute)) return;
+  const m = state.minute;
+  if (it.k === 'fat') {
+    const d = -rand(.07, .13); c.impacts.push({ per: d / 2, n: 2, d: 0 }, { per: -d * .85 / 12, n: 12, d: 3 }); c.volBoost += 10;
+    scheduleItem({ t: m + 2, a: 'tnews', ci: c.i, s: -1, text: `【速報】${c.name}株に大量の誤発注か　一時${Math.round(-d * 100)}%急落`, body: `${c.name}の株式に、機関投資家によるとみられる大量の売り注文が一度に出され、株価が一時急落した。関係者は「発注ミスの可能性が高い」としている。業績に変化はなく、市場では「すぐに戻るのでは」との見方も出ている。` });
+  } else if (it.k === 'algo') {
+    const d = rand(.06, .11); c.impacts.push({ per: d / 3, n: 3, d: 0 }, { per: -d * .9 / 8, n: 8, d: 5 }); c.volBoost += 9;
+    scheduleItem({ t: m + 4, a: 'tnews', ci: c.i, s: 0, text: `${c.name}が乱高下　高速取引のアルゴリズムが暴走か`, body: `${c.name}の株価が材料なく急騰し、その後急速に値を戻した。市場関係者は「高速取引のプログラムが連鎖的に反応した可能性がある」と話している。` });
+  } else {
+    const d = (Math.random() < .6 ? 1 : -1) * rand(.05, .1); c.impacts.push({ per: d / 22, n: 22, d: 0 }); c.volBoost += 4;
+    for (let k = 0; k < 3; k++) REACTQ.push({ m: m + ri(8, 20), ch: 'all', text: `#${c.code} ${c.short} ${pick(d > 0 ? ['材料ないのに上がってる…なにこれ', '誰かが大量に買ってる？', '謎の買い、怖い'] : ['材料ないのに下がってる…', '誰かが投げてる？', '理由のない売り、怖い'])}` });
+  }
+  bumpHeat(c.i, 1.5); fx({ t: 'flash', cis: [c.i], d: 2.5 });
+}
+function runTNews(it) {
+  const c = state.cos[it.ci]; if (!c) return;
+  const tag = it.tag || '緊急';
+  publishNews({ id: state.seq++, type: 'trouble', ci: c.i, m: (it.s || 0) * .06, text: it.text, body: it.body || '', tag }, tag);
+  fx({ t: 'flash', cis: [c.i], d: 3 });
 }
 function runCrash(it) {
   for (const c of state.cos) addImpact(c, -rand(.025, .05) * (.6 + c.beta * .4), 'pump');
@@ -1634,6 +1669,11 @@ function planDay(from) {
 
   items.push({ t: 600, a: 'boss' }, { t: 810, a: 'boss' });
   state.events = ev.filter(e => e.t > f);
+  if (Math.random() < .45) {
+    let t = ri(565, 905); if (isLunch(t) || (t >= T_AM_END && t < T_PM)) t += 70;
+    const pool = cos.filter(c => powered(c.i));
+    if (pool.length && t < T_CLOSE - 5) items.push({ t, a: 'trouble', ci: pick(pool).i, k: pick(['fat', 'algo', 'whale', 'whale']) });
+  }
   state.items = items.filter(it => it.t > f).sort((a, b) => a.t - b.t); state.itemPtr = 0;
   state.rumors = state.rumors.filter(r => !r.done).slice(-20);
 }
@@ -1682,7 +1722,12 @@ function applyEvent(e) {
     for (const c of state.cos) { const s = (F.sens[c.sector] || 0) + (F.sens.all || 0), m = e.mag * e.dir * s; if (Math.abs(m) > .003) { addImpact(c, m, 'news'); cis.push(c.i); } }
     fx({ t: 'flash', cis, d: 2.5 });
   } else if (e.type === 'bait') { const c = state.cos[e.ci]; addImpact(c, e.hdir * rand(.015, .03), 'hype'); addImpact(c, e.m, 'news'); fx({ t: 'flash', cis: [e.ci], d: 3.5 }); }
-  else { addImpact(state.cos[e.ci], e.m, 'news'); linkImpacts(e); fx({ t: 'flash', cis: [e.ci], d: 3.5 }); }
+  else {
+    /* たまに「定説」と逆に動く（材料出尽くし・悪材料出尽くし） */
+    const c = state.cos[e.ci], flip = (e.type === 'co' || e.type === 'earn') && Math.abs(e.m || 0) >= .025 && isOpen(state.minute) && Math.random() < .12;
+    if (flip) { addImpact(c, -e.m * rand(.4, .8), 'news'); flipFollow(e, c); } else addImpact(c, e.m, 'news');
+    linkImpacts(e); fx({ t: 'flash', cis: [e.ci], d: 3.5 });
+  }
 }
 function priceSim() {
   const m = state.minute, early = m < T_AM + 20, first = m === T_AM || m === T_PM;
@@ -1783,6 +1828,8 @@ function handleItem(it, m) {
   else if (it.a === 'buzz') runBuzz(it);
   else if (it.a === 'buzzEnd') postSNS('kami', pick(['利確完了。ついてきた人おめでとう', 'もう降りた。あとは知らん', '次の銘柄を探す旅に出る']), false, 'all');
   else if (it.a === 'crash') runCrash(it);
+  else if (it.a === 'trouble') runTrouble(it);
+  else if (it.a === 'tnews') runTNews(it);
   else if (it.a === 'react') runReact(it);
   else if (it.a === 'chatter') { const c = state.cos[it.ci]; if (c) postSNS(wpick(NOISERS), pick(CHATTER)(c), true, it.ci); }
   else if (it.a === 'boss') bossCall();
@@ -1982,6 +2029,7 @@ function buyUpgrade(id, key) {
     const cl = state.up.clv || 1, nx = CLV[cl + 1]; if (!nx || state.cash < nx.price) return;
     state.cash -= nx.price; state.up.clv = cl + 1;
     fx({ t: 'toast', text: `${nameOf(key)}が会社をレベルアップ！ 会社Lv${cl + 1}：${nx.eff}`, cls: 'good' }); fx({ t: 'sfx', k: 'bell' });
+    if (cl + 1 >= CLV_MAX) { state.summon = true; fx({ t: 'boss', text: '社長（内線）「……世界一、か。明日、社長室に来てくれ」' }); }
     markAllDirty(); updateStations(); refreshModal(); saveGame(); return;
   }
   const u = UPGRADES.find(x => x.id === id); if (!u || !upCanLevel(u, state)) return;
@@ -2058,6 +2106,8 @@ function startDay() {
   for (const k in state.contrib) { state.contrib[k].r = 0; state.contrib[k].n = 0; }
   state.ready = {}; state.watch = {}; state.coPosts = {};
   planDay();
+  state.bossDoor = 'closed';
+  if (state.summon && !state.cleared2) fx({ t: 'boss', text: '社長（内線）「社長室で待っている。いつでも来てくれ」' });
   addFeed({ k: 'sep', text: `DAY ${state.day}　第${termOf(state.day)}期ノルマ ${yen(state.quota)}（〆 DAY ${deadlineOf(state.day)}）` });
   const night = state.overnight && state.overnight.length ? state.overnight : state.day === 1 ? makeOvernight() : []; state.overnight = [];
   for (const e of night) { publishNews(e, '夜間'); applyEvent(e); }
@@ -2103,7 +2153,7 @@ function saveGame() {
   if (NET.role === 'client') return;
   try { const s = JSON.parse(JSON.stringify(state)); s.players = []; s.ready = {}; localStorage.setItem(SAVE_KEY, JSON.stringify(s)); } catch (e) { }
 }
-function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 9 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
+function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); if (!s) return null; const o = JSON.parse(s); return o && o.v === 10 && o.phase === 'market' ? o : null; } catch (e) { return null; } }
 
 /* =========================================================
    HUD
@@ -2280,6 +2330,7 @@ function sfx(k) {
     case 'coin': beep(1568, .08, 'triangle', .05); beep(2093, .16, 'triangle', .05, .07); break;
     case 'ping': beep(1760, .05, 'sine', .05); beep(2349, .12, 'sine', .05, .06); break;
     case 'chat': beep(784, .06, 'sine', .035); break;
+    case 'fanfare': [523, 659, 784, 1047, 784, 1047].forEach((f, i) => beep(f, i === 5 ? .7 : .18, 'triangle', .07, i * .16)); [262, 330, 392].forEach(f => beep(f, 1.2, 'sine', .04, .8)); break;
     case 'mail': beep(1175, .07, 'sine', .04); beep(1568, .12, 'sine', .04, .09); break;
     case 'knock': for (let i = 0; i < 3; i++) { beep(95, .09, 'triangle', .16, i * .24); noise(.06, .22, i * .24, 700); } break;
     case 'creak': beep(210, .5, 'sawtooth', .015); beep(260, .45, 'sawtooth', .012, .12); break;
@@ -2719,7 +2770,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v26 P2P';
+const GAME_VERSION = 'v28 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -2960,8 +3011,8 @@ function ensureBoss() {
   av.head.children.forEach((c, i) => { if (i > 1) c.visible = false; });
   const hairG = av.head.children[1]; hairG.material = new THREE.MeshStandardMaterial({ color: '#9aa0a8', roughness: .8 });
   const dk = new THREE.MeshStandardMaterial({ color: '#15100c', roughness: .6 });
-  [-1, 1].forEach(s => { const br = new THREE.Mesh(new THREE.BoxGeometry(.11, .028, .03), dk); br.position.set(s * .085, .085, -.232); br.rotation.z = s * .38; av.head.add(br); });
-  const mouthB = new THREE.Mesh(new THREE.BoxGeometry(.09, .016, .02), dk); mouthB.position.set(0, -.105, -.225); mouthB.rotation.z = 0; av.head.add(mouthB);
+  BQ.brows = [-1, 1].map(s => { const br = new THREE.Mesh(new THREE.BoxGeometry(.11, .028, .03), dk); br.position.set(s * .085, .085, -.232); br.rotation.z = s * .38; br.userData.s = s; av.head.add(br); return br; });
+  const mouthB = new THREE.Mesh(new THREE.BoxGeometry(.09, .016, .02), dk); mouthB.position.set(0, -.105, -.225); mouthB.rotation.z = 0; av.head.add(mouthB); BQ.mouthB = mouthB; BQ.smile = av.head.children[6];
   const tieG = new THREE.MeshStandardMaterial({ color: '#b8892a', metalness: .4, roughness: .4 });
   av.torso.traverse(o => { if (o.isMesh && o.material === AVM.dark && o.scale.x < .03) o.material = tieG; });
   const shades = new THREE.Mesh(new THREE.BoxGeometry(.34, .075, .03), new THREE.MeshStandardMaterial({ color: '#050505', metalness: .6, roughness: .2 })); shades.position.set(0, .015, -.235); av.head.add(shades);
@@ -2979,27 +3030,101 @@ function ensureBoss() {
 function setSub(text) { const el = $('#bossSub'); if (!el) return; el.textContent = text || ''; el.hidden = !text; }
 function enterBossMode() {
   if (BQ.active) return;
-  BQ.active = true; BQ.stage = ''; BQ.t = 0; BQ.sent = false;
+  BQ.active = true; BQ.mode = 'punish'; BQ.stage = ''; BQ.t = 0; BQ.sent = false;
+  setTimeout(() => bossFace(false), 0);
   if (LOCAL.panel === 'desk') standUp(false); else if (LOCAL.panel) closePanel(false);
   ensureBoss();
   darken(true);
   bossRoom.visible = true; doorGlow.visible = true; BQ.fistLight.visible = true; bossLight.intensity = 1.9; doorGlow.intensity = .9; spill.visible = true; underDoor.visible = true; leaks.forEach(m => { m.visible = true; });
   BQ.boss.grp.visible = true; BQ.boss.x = 3.8; BQ.boss.z = BR_Z0 + 2.6; BQ.boss.grp.position.set(3.8, 0, BR_Z0 + 2.6); BQ.boss.grp.rotation.y = 0;
-  document.body.classList.add('bossmode'); $('#bossHint').hidden = false;
+  document.body.classList.add('bossmode'); $('#bossHint').innerHTML = '照明が落ちた……<b>奥の灯りのついた社長室</b>へ'; $('#bossHint').hidden = false;
   $('#blackout').hidden = true; $('#blackout').className = ''; setSub('');
   const bb = $('#boBtns'); if (bb) bb.innerHTML = '';
   sfx('powerdown');
 }
 function exitBossMode() {
   if (!BQ.active) return;
-  BQ.active = false; BQ.stage = ''; LOCAL.cut = false;
+  BQ.active = false; BQ.stage = ''; BQ.mode = ''; LOCAL.cut = false;
   darken(false);
+  if (CONF.grp) CONF.grp.visible = false; if (BQ.boss) { BQ.boss.upper.position.y = 0; BQ.boss.arms.forEach(a => a.rotation.set(0, 0, 0)); }
+  $('#blackout').className = '';
   bossRoom.visible = false; doorGlow.visible = false; if (BQ.fistLight) BQ.fistLight.visible = false; bossLight.intensity = 0; doorGlow.intensity = 0; spill.visible = false; underDoor.visible = false; leaks.forEach(m => { m.visible = false; });
   if (BQ.boss) BQ.boss.grp.visible = false; if (BQ.fist) BQ.fist.visible = false;
   BQ.door = 0; doorPivot.rotation.y = 0;
   document.body.classList.remove('bossmode', 'bosscut'); $('#bossHint').hidden = true; $('#blackout').hidden = true; setSub('');
   resetView();
 }
+/* ---- 社長室に呼ばれる（会社Lv最大＝世界一の企業）：ノックすればクリアのエンディング ---- */
+const CONF = { grp: null, bits: [] };
+function ensureConfetti() {
+  if (CONF.grp) return;
+  CONF.grp = new THREE.Group(); CONF.grp.userData.keepLit = true; CONF.grp.visible = false; bossRoom.add(CONF.grp);
+  const geo = new THREE.PlaneGeometry(.06, .035), cols = ['#f2a93b', '#ff5468', '#4fd1c5', '#9fd0ff', '#c084fc', '#f4d35e', '#ffffff'];
+  for (let i = 0; i < 120; i++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: pick(cols), side: THREE.DoubleSide }));
+    CONF.grp.add(m); CONF.bits.push({ m, vx: 0, vy: 0, vz: 0, rs: 0 });
+  }
+}
+function resetConfetti() {
+  for (const b of CONF.bits) { b.m.position.set(rand(2.4, 5.2), rand(2.2, 3.6), BR_Z0 + rand(.6, 3.2)); b.vx = rand(-.3, .3); b.vy = -rand(.4, 1.1); b.vz = rand(-.3, .3); b.rs = rand(2, 8); b.m.rotation.set(rand(0, 6), rand(0, 6), 0); }
+}
+function tickConfetti(dt) {
+  if (!CONF.grp || !CONF.grp.visible) return;
+  for (const b of CONF.bits) {
+    b.m.position.x += b.vx * dt; b.m.position.y += b.vy * dt; b.m.position.z += b.vz * dt; b.m.rotation.x += b.rs * dt; b.m.rotation.y += b.rs * .7 * dt;
+    b.vx += Math.sin(tAll * 3 + b.rs) * .6 * dt;
+    if (b.m.position.y < .02) { b.m.position.y = .02; b.vy = 0; b.vx *= .5; b.vz *= .5; b.rs = 0; }
+  }
+}
+function bossFace(happy) { if (!BQ.brows) return; BQ.brows.forEach(b => { b.rotation.z = happy ? -b.userData.s * .18 : b.userData.s * .38; b.position.y = happy ? .1 : .085; }); BQ.mouthB.visible = !happy; if (BQ.smile) { BQ.smile.visible = happy; BQ.smile.scale.set(.26, .26, .5); } }
+function enterPraiseMode() {
+  if (BQ.active) return;
+  BQ.active = true; BQ.mode = 'praise'; BQ.stage = ''; BQ.t = 0; BQ.sent = false;
+  ensureBoss(); ensureConfetti(); bossFace(true);
+  bossRoom.visible = true; doorGlow.visible = true; bossLight.intensity = 1.9; doorGlow.intensity = .7; spill.visible = true; underDoor.visible = true; leaks.forEach(m => { m.visible = true; });
+  BQ.boss.grp.visible = true; BQ.boss.x = 3.8; BQ.boss.z = BR_Z0 + 2.6; BQ.boss.grp.position.set(3.8, 0, BR_Z0 + 2.6); BQ.boss.grp.rotation.y = 0;
+  const h = $('#bossHint'); h.innerHTML = '社長室に呼ばれている……<b>奥の灯りのついたドア</b>をノック'; h.hidden = false;
+}
+function praiseTick(dt) {
+  const boss = BQ.boss, t = (BQ.t += dt);
+  P.x += (3.8 - P.x) * Math.min(1, dt * 4); P.z += (BR_Z0 + 1.15 - P.z) * Math.min(1, dt * 4);
+  let dy = Math.PI - P.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); P.yaw += dy * Math.min(1, dt * 6); P.pitch += (.04 - P.pitch) * Math.min(1, dt * 6);
+  tickConfetti(dt);
+  if (BQ.stage === 'enter') {
+    if (t > .15 && !BQ.slammed) { BQ.slammed = true; sfx('creak'); }
+    idleBoss(dt);
+    if (t > 1.2) { BQ.stage = 'talk'; BQ.t = 0; setSub('社長「……来たか」'); }
+  } else if (BQ.stage === 'talk') {
+    const tz = BR_Z0 + 2.3; boss.z += (tz - boss.z) * Math.min(1, dt * 1.4); boss.grp.position.set(3.8, 0, boss.z);
+    const walking = Math.abs(tz - boss.z) > .03; boss.phase += walking ? dt * 6 : 0; const sw = walking ? Math.sin(boss.phase) * .45 : 0;
+    boss.legs[0].rotation.x = sw; boss.legs[1].rotation.x = -sw;
+    if (t < 4.4) { boss.arms[0].rotation.x = -sw * .5; boss.arms[1].rotation.x = sw * .5; boss.arms[0].rotation.z = -.05; boss.arms[1].rotation.z = .05; }
+    if (t > 1.9 && !BQ.sub2) { BQ.sub2 = true; setSub('社長「カブトデスク証券は、ついに世界一の企業になった」'); }
+    if (t > 4.4 && !BQ.sub3) { BQ.sub3 = true; setSub('社長「君たちのおかげだ。本当に、よくやった！！」'); sfx('fanfare'); resetConfetti(); CONF.grp.visible = true; }
+    if (t > 4.4) { const w = Math.sin(t * 9) * .25; boss.arms[0].rotation.set(0, 0, -2.6 + w); boss.arms[1].rotation.set(0, 0, 2.6 - w); boss.upper.position.y = Math.abs(Math.sin(t * 6)) * .06; }
+    if (t > 8.2) {
+      BQ.stage = 'end'; BQ.t = 0; setSub('');
+      const bo = $('#blackout'); bo.hidden = false; bo.className = 'whiteout';
+      if (!BQ.sent) { BQ.sent = true; request('ctl', { a: 'praised' }); }
+      setTimeout(() => { LOCAL.praised = true; showModal('ending'); }, 900);
+    }
+  }
+}
+function praiseCheck() {
+  if (!state || state.phase === 'title') return;
+  const want = !!state.summon && state.phase === 'market' && !LOCAL.praised;
+  if (want && !BQ.active) enterPraiseMode();
+  else if (!want && BQ.active && BQ.mode === 'praise' && !BQ.stage) exitBossMode();
+}
+function endingHTML() {
+  const f = peekCred(myKey()).fol, days = state.day, x = assets() / START_CASH;
+  return `<div class="eyebrow">社長室</div><div class="verdict pass">世界一の企業</div>
+    <p class="lead">カブトデスク証券は、ついに世界一の企業になった。${isMulti() ? '社長はチーム全員の名前を呼んで、何度も頭を下げた。' : '社長は何度も「よくやった」と繰り返した。'}</p>
+    <div class="kv"><div><span>営業日</span><span>${days}日（第${termOf(days)}期）</span></div><div><span>総資産</span><span>${yen(assets())}</span></div><div><span>元手の</span><span>${x.toFixed(1)}倍</span></div><div><span>最高総資産</span><span>${yen(state.stats.best)}</span></div><div><span>約定回数</span><span>${fmt(state.stats.totalTrades || 0)}回</span></div><div><span>フォロワー</span><span>${fmt(f)}</span></div></div>
+    <p class="owned">ここから先もそのまま遊び続けられます（ノルマは続きます）。</p>
+    <div class="btns"><button class="btn primary" id="mEndCont" type="button">続けて遊ぶ</button><button class="btn" id="mTitle" type="button">タイトルへ</button></div>`;
+}
+
 /* ドアを抜けて社長室へ入れるか（ドアが開いているときだけ） */
 function bossPass(x, z, r) {
   if (!BQ.active || BQ.door < .75) return false;
@@ -3013,8 +3138,12 @@ function bossTick(dt) {
   doorPivot.rotation.y = -1.75 * BQ.door;
   spill.material.opacity = .55 + BQ.door * .45;
   const boss = BQ.boss;
-  if (BQ.stage === '' && P.z > ROOM.z1 + .45) { BQ.stage = 'slam'; BQ.t = 0; BQ.slammed = false; BQ.sub2 = false; LOCAL.cut = true; keys.clear(); releaseLook(); $('#bossHint').hidden = true; document.body.classList.add('bosscut'); }
+  if (BQ.stage === '' && P.z > ROOM.z1 + .45) {
+    BQ.stage = BQ.mode === 'praise' ? 'enter' : 'slam'; BQ.t = 0; BQ.slammed = false; BQ.sub2 = false; BQ.sub3 = false; LOCAL.cut = true; keys.clear(); releaseLook(); $('#bossHint').hidden = true; document.body.classList.add('bosscut');
+    if (BQ.mode === 'praise' && !isMulti()) { state.paused = true; syncCtlUI(); }
+  }
   if (!BQ.stage) { idleBoss(dt); return; }
+  if (BQ.mode === 'praise') { praiseTick(dt); return; }
   BQ.t += dt; const t = BQ.t;
   /* カメラ（自分）は部屋の中央へ、社長の方を向く */
   P.x += (3.8 - P.x) * Math.min(1, dt * 4); P.z += (BR_Z0 + 1.15 - P.z) * Math.min(1, dt * 4);
@@ -3112,6 +3241,7 @@ for (let ci = 0; ci < COMPANIES.length; ci++) {
 }
 const WINGS = [];
 (function buildWings() {
+  return; /* v28: 拡張予定地の表示は撤去（デスクは購入すると現れる） */
   const stripe = canvasTex(256, 32), sg = stripe.ctx;
   for (let x = -32; x < 288; x += 32) { sg.fillStyle = '#f2c230'; sg.fillRect(x, 0, 16, 32); sg.fillStyle = '#111'; sg.fillRect(x + 16, 0, 16, 32); }
   sg.setTransform(1, 0, 0, 1, 0, 0); stripe.tex.wrapS = THREE.RepeatWrapping; stripe.tex.repeat.set(9, 1); stripe.tex.needsUpdate = true;
@@ -3463,6 +3593,17 @@ const MAILERS = {
     tip: (c, d, w) => ['…', `${c.code} ${d > 0 ? '上' : '下'} ${w} 以上`] },
 };
 const MAIL_IDS = Object.keys(MAILERS);
+const MAIL_ADDR = { hayase: 'r.hayase@aoba-sec.co.jp', okochi: 'm.okochi@kanreki-mail.jp', minobe: 'minobe@kabuto-shimbun.jp', kiriya: 'kiriya.kengyo@freemail.ne.jp', takumi: 'god_takumi_777@bakueki-salon.xyz', gwp: 'info@global-wealth-partners.biz', miki: 'miki.love.2525@kawaii-mail.xyz', sennin: 'kabu-sennin@yamaoku.or.jp', mrx: 'x@0x0.invalid' };
+/* プレイヤーのアドレス：席番号ごとに別 */
+function addrOf(key) { return `dealer${Math.max(0, seatOfKey(key)) + 1}@kabutodesk.co.jp`; }
+/* 送信：たまに同じメールが複数のプレイヤーに届く（業者は一斉送信しがち） */
+function sendMail(key, spec) {
+  const P = MAILERS[spec.s];
+  const others = isMulti() ? mailMembers().filter(k => k !== key && (() => { const c = mailBoxOf(k).c[spec.s]; return c ? !c.blk : P.type === 'scam'; })()) : [];
+  let to = [key];
+  if (others.length && spec.k !== 'intro' && spec.k !== 'ask' && Math.random() < (P.type === 'scam' ? .5 : .18)) to = to.concat(shuffle(others.slice()).slice(0, ri(1, others.length)));
+  for (const k of to) { const b = mailBoxOf(k); if (!b.c[spec.s]) b.c[spec.s] = { rel: 0, blk: false }; pushMail(k, b, Object.assign({}, spec, to.length > 1 ? { to } : {})); }
+}
 const mailBoxOf = key => { const all = state.mail = state.mail || {}; return all[key] || (all[key] = { c: {}, box: [], seq: 1, next: 0 }); };
 const peekBox = key => (state && state.mail && state.mail[key]) || { c: {}, box: [], seq: 1, next: 0 };
 const relOf = (mb, s) => (mb.c[s] && mb.c[s].rel) || 0;
@@ -3514,13 +3655,13 @@ function genMail(key) {
       const e = L.e, truth = L.tr, acc = P.type === 'scam' ? P.skill : lv >= 3 ? Math.min(.97, P.skill + .1) : lv === 2 ? P.skill : P.skill * .85 + .05;
       const d = Math.random() < acc ? truth : -truth;
       e.mailed = (e.mailed || 0) + 1;
-      pushMail(key, mb, { s, k: 'tip', v: 0, ci: L.ci, d, tr: truth, w: whenLabel(e.t, lv), lv, eid: e.id });
+      sendMail(key, { s, k: 'tip', v: 0, ci: L.ci, d, tr: truth, w: whenLabel(e.t, lv), lv, eid: e.id });
       return;
     }
     /* 詐欺業者はネタが無くても適当な銘柄を推してくる */
-    if (P.type === 'scam') { const ci = pick(state.cos.filter(c => powered(c.i))).i; pushMail(key, mb, { s, k: 'tip', v: 0, ci, d: Math.random() < .5 ? 1 : -1, w: whenLabel(m + ri(20, 90), 2), lv: 2, eid: -1 }); return; }
+    if (P.type === 'scam') { const ci = pick(state.cos.filter(c => powered(c.i))).i; sendMail(key, { s, k: 'tip', v: 0, ci, d: Math.random() < .5 ? 1 : -1, w: whenLabel(m + ri(20, 90), 2), lv: 2, eid: -1 }); return; }
   }
-  pushMail(key, mb, { s, k: 'chat', v: ri(0, P.chat.length - 1) });
+  sendMail(key, { s, k: 'chat', v: ri(0, P.chat.length - 1) });
 }
 function mailTick(m) {
   if (!runsSim() || state.phase !== 'market') return;
@@ -3606,13 +3747,16 @@ function drawMailTab(g, s, ci) {
     g.fillStyle = '#0b0f17'; g.font = `900 20px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(P.name)[0], 186, 98); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     g.fillStyle = C.fg; g.font = `900 24px ${F_JP}`; g.fillText(P.name, 216, 92, W - 420);
     if ((state.up.mailsec | 0) >= 2 && P.type === 'scam') { g.fillStyle = '#f2c230'; g.font = `900 17px ${F_JP}`; g.fillText('⚠ 業者の可能性が高い', 480, 114); }
-    g.fillStyle = C.muted; g.font = `500 16px ${F_JP}`; g.fillText(P.org, 216, 114, 300);
+    g.fillStyle = C.muted; g.font = `500 15px ${F_JP}`; g.fillText(`${P.org}　<${MAIL_ADDR[cur.s] || ''}>`, 216, 114, W - 590);
     g.fillStyle = C.muted; g.font = `700 16px ${F_JP}`; g.fillText('友好度', W - 350, 114); relStars(g, W - 292, 108, rel, 18);
     g.fillStyle = C.line; g.fillRect(14, 128, W - 28, 2);
-    g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText(subj, 24, 166, W - 150);
-    g.fillStyle = C.faint; g.font = `500 18px ${F_NUM}`; g.textAlign = 'right'; g.fillText(cur.tl, W - 24, 166); g.textAlign = 'left';
+    { const tos = cur.to && cur.to.length > 1 ? cur.to : [key];
+      g.fillStyle = C.faint; g.font = `600 15px ${F_JP}`; g.fillText('宛先', 24, 152);
+      g.fillStyle = C.muted; g.font = `600 15px ${F_NUM}`; g.fillText(tos.map(k => `${k === key ? 'あなた' : nameOf(k)} <${addrOf(k)}>`).join('、'), 66, 152, W - 90); }
+    g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText(subj, 24, 188, W - 150);
+    g.fillStyle = C.faint; g.font = `500 18px ${F_NUM}`; g.textAlign = 'right'; g.fillText(cur.tl, W - 24, 188); g.textAlign = 'left';
     g.fillStyle = '#d3dbea'; g.font = `500 23px ${F_JP}`;
-    wrapLines(g, body, W - 48, 7).forEach((l, i) => g.fillText(l, 24, 206 + i * 33));
+    wrapLines(g, body, W - 48, 6).forEach((l, i) => g.fillText(l, 24, 226 + i * 33));
     if (cur.k === 'tip') {
       const c = state.cos[cur.ci], tag = cur.res == null ? (cur.eid < 0 ? '' : '結果待ち') : cur.res > 0 ? '当たった' : cur.res < 0 ? '外れた' : '動かず';
       if (tag) { g.font = `900 19px ${F_JP}`; const tw = g.measureText(tag).width + 24; rr(g, 24, 432, tw, 32, 16); g.fillStyle = cur.res > 0 ? C.ok : cur.res < 0 ? C.up : '#34405a'; g.fill(); g.fillStyle = '#fff'; g.fillText(tag, 36, 455); }
@@ -3632,7 +3776,7 @@ function drawMailTab(g, s, ci) {
   g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText('受信箱', 24, 106);
   g.fillStyle = unread ? C.up : C.muted; g.font = `700 19px ${F_JP}`; g.fillText(unread ? `未読 ${unread}` : '未読なし', 130, 105);
   const blocked = MAIL_IDS.filter(x => mb.c[x] && mb.c[x].blk).length;
-  if (blocked) { g.fillStyle = C.faint; g.textAlign = 'right'; g.fillText(`ブロック中 ${blocked}`, W - 24, 105); g.textAlign = 'left'; }
+  g.fillStyle = C.muted; g.font = `600 17px ${F_NUM}`; g.textAlign = 'right'; g.fillText(`${addrOf(key)}${blocked ? `　ブロック中 ${blocked}` : ''}`, W - 24, 105, 420); g.textAlign = 'left';
   if (!list.length) { g.fillStyle = C.muted; g.font = `500 22px ${F_JP}`; g.fillText('メールはまだありません', 24, 170); return; }
   const off = clamp(LOCAL.mailScroll || 0, 0, Math.max(0, list.length - 1)); LOCAL.mailScroll = off;
   let y = 122, shown = 0;
@@ -3648,7 +3792,8 @@ function drawMailTab(g, s, ci) {
     if ((state.up.mailsec | 0) >= 2 && P.type === 'scam') { g.font = `900 16px ${F_JP}`; const nw = Math.min(330, g.measureText(P.name).width); rr(g, 98 + nw, y + 9, 64, 22, 11); g.fillStyle = '#f2c230'; g.fill(); g.fillStyle = '#1a1205'; g.fillText('⚠ 怪しい', 104 + nw, y + 26); }
     relStars(g, 440, y + 20, relOf(mb, x.s), 14);
     g.fillStyle = C.faint; g.font = `500 16px ${F_NUM}`; g.textAlign = 'right'; g.fillText(x.tl, W - 44, y + 26); g.textAlign = 'left';
-    g.fillStyle = un ? '#d3dbea' : C.muted; g.font = `${un ? 700 : 500} 20px ${F_JP}`; g.fillText(subj, 92, y + 54, W - 260);
+    g.fillStyle = un ? '#d3dbea' : C.muted; g.font = `${un ? 700 : 500} 20px ${F_JP}`; g.fillText(subj, 92, y + 54, W - 330);
+    if (x.to && x.to.length > 1) { g.font = `800 14px ${F_JP}`; const tt = `一斉 ${x.to.length}人`, tw = g.measureText(tt).width + 14; rr(g, W - 150 - tw, y + 40, tw, 20, 10); g.fillStyle = 'rgba(159,208,255,.2)'; g.fill(); g.fillStyle = '#9fd0ff'; g.fillText(tt, W - 143 - tw, y + 55); }
     if (x.k === 'tip' && x.res != null) { g.font = `900 15px ${F_JP}`; const t = x.res > 0 ? '当たった' : x.res < 0 ? '外れた' : '動かず'; g.fillStyle = x.res > 0 ? C.ok : x.res < 0 ? C.up : C.muted; g.textAlign = 'right'; g.fillText(t, W - 44, y + 54); g.textAlign = 'left'; }
     else if (x.ans == null && x.k !== 'tip' && !un) { g.font = `700 15px ${F_JP}`; g.fillStyle = C.note; g.textAlign = 'right'; g.fillText('未返信', W - 44, y + 54); g.textAlign = 'left'; }
     y += 72; shown++;
@@ -4178,7 +4323,7 @@ function pickAt(nx, ny) {
 function promptFor(t) {
   if (!t) return '';
   if (state.phase === 'boss') return t.kind === 'bossdoor' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> ノックする' : '';
-  if (t.kind === 'bossdoor') return '';
+  if (t.kind === 'bossdoor') return BQ.active && BQ.mode === 'praise' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> 社長室をノックする' : '';
   if (t.kind === 'st') { const c = state.cos[t.ci]; const u = deskUser(t.ci); return u ? `${stationLabel(t.ci)} ${esc(c.short)}：${esc(nameOf(u.by || u.peer))}が使用中` : `<kbd>E</kbd>座る　${stationLabel(t.ci)} ${esc(c.short)}`; }
   if (t.kind === 'front') { const c = state.cos[t.ci]; return powered(t.ci) ? `${esc(c.short)}（${stationLabel(t.ci)}）　<kbd>Q</kbd> 指さし` : ''; }
   return { news: '<kbd>E</kbd>ニュース', all: '<kbd>E</kbd>#株クラ', cal: '<kbd>E</kbd>決算予定', big: '<kbd>E</kbd>持ち株一覧' }[t.kind] || '';
@@ -4186,6 +4331,7 @@ function promptFor(t) {
 function interact(t) {
   t = t || target; if (!t || !worldActive()) return;
   if (state.phase === 'boss') { if (t.kind === 'bossdoor' && state.bossDoor !== 'open' && !BQ.stage) { sfx('knock'); request('ctl', { a: 'knock' }); } return; }
+  if (t.kind === 'bossdoor') { if (BQ.active && BQ.mode === 'praise' && state.bossDoor !== 'open' && !BQ.stage) { sfx('knock'); request('ctl', { a: 'knock' }); } return; }
   if (t.kind === 'st') {
     if (!powered(t.ci)) return;
     const u = deskUser(t.ci); if (u) { logLine(`${stationLabel(t.ci)}は${nameOf(u.by || u.peer)}が使用中`, 'bad'); sfx('err'); return; }
@@ -4422,7 +4568,7 @@ function frame(now) {
   ambientTick();
   if (NET.role === 'host' && now - NET.lastFlush > 350) flush();
   const moved = movePlayer(dt); bob += moved * 7;
-  bossTick(dt);
+  praiseCheck(); bossTick(dt);
   presAcc += dt;
   const act = currentAct();
   if (isMulti() && NET.office && (presAcc > .1 || act !== lastAct)) {
@@ -4540,10 +4686,10 @@ function showModal(kind) {
       <ul class="rulelist">
         <li>ノルマは<b>3営業日ごと</b>。期限の日の<b>15:30</b>に総資産（現金＋持ち株）がノルマ未満ならクビ。</li>
         <li>取引時間は <b>9:00–11:30</b>（前場）と <b>12:30–15:30</b>（後場）。11:30〜12:30は昼休み。</li>
-        <li>毎日の引け後に購買部で装備をレベルアップできる。上限まで上げたら<b>会社のレベルアップ</b>でオフィスを広げよう。</li>
+        <li>毎日の引け後に購買部で装備をレベルアップできる。上限まで上げたら<b>会社のレベルアップ</b>で上限を広げよう。</li>
         <li>席のモニターの「メール」には情報屋から連絡が来る。丁寧に付き合うと確度の高いリークをくれる。ただし怪しい業者に注意。</li>
         <li>ニュースとSNSで株価が動く。SNSの予想が当たるとフォロワーが増え、投稿が効くようになる。</li>
-        <li><b>${GOAL_DAYS}営業日（${GOAL_DAYS / TERM}期）</b>生き残れば上場。</li>
+        <li><b>${GOAL_DAYS}営業日（${GOAL_DAYS / TERM}期）</b>生き残れば上場。会社を<b>世界一（会社Lv6）</b>にすればクリア。</li>
       </ul>
       <div class="namerow"><label for="pName">プレイヤー名</label><input id="pName" maxlength="12" autocomplete="off" placeholder="名前（12文字まで）" value="${esc(LOCAL.pname)}"></div>
       <div class="modes">
@@ -4639,9 +4785,13 @@ function showModal(kind) {
   } else if (kind === 'clear') {
     md.innerHTML = `<div class="eyebrow">DAY ${GOAL_DAYS}　上場審査</div><div class="verdict pass">上場承認</div>
       <p class="lead">${GOAL_DAYS}営業日・${GOAL_DAYS / TERM}期すべてのノルマを突破。カブトデスク証券の株式上場が決まった。総資産は ${yen(assets())}、元手の ${(assets() / START_CASH).toFixed(2)} 倍。</p>
-      <p class="owned">ここから先はエンドレス。ノルマは上がり続けます。</p>
+      <p class="owned">次の目標は、会社を<b>世界一の企業（会社Lv6）</b>にすること。ノルマは上がり続けます。</p>
       <div class="btns"><button class="btn primary" id="mCont" type="button">続けて稼ぐ（購買部へ）</button></div>`;
     $('#mCont').onclick = () => request('ctl', { a: 'shop' });
+  } else if (kind === 'ending') {
+    md.innerHTML = endingHTML();
+    $('#mEndCont').onclick = () => { closeModal(); $('#blackout').hidden = true; exitBossMode(); if (!isMulti()) { state.paused = false; syncCtlUI(); } };
+    $('#mTitle').onclick = () => leaveOffice();
   } else if (kind === 'over') {
     const rows = state.stats.history.map(h => `<tr><td>${h.day}</td><td>${yen(h.assets)}</td><td>${yen(h.quota)}</td><td class="${h.pass == null ? '' : h.pass ? 'up' : 'down'}">${h.pass == null ? '途中' : h.pass ? '達成' : '未達'}</td></tr>`).join('');
     md.innerHTML = `<div class="eyebrow">社長室</div><div class="verdict fail">${isMulti() ? '全員クビ' : 'クビ'}</div>
@@ -4812,7 +4962,7 @@ function start(data) {
   if (data.role === 'client' && data.code) {
     newGame('solo'); afterStateReplaced(); attract = false;
     resume = { role: 'client', code: data.code }; showModal('joining');
-  } else if (data.state && data.state.v === 9) {
+  } else if (data.state && data.state.v === 10) {
     state = data.state; if (typeof data.soundOn === 'boolean') soundOn = data.soundOn;
     if (data.local) { LOCAL.sel = data.local.sel | 0; LOCAL.qty = data.local.qty || 100; }
     afterStateReplaced(); attract = false;
