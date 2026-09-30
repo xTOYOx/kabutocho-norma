@@ -1000,6 +1000,7 @@ function newGame(mode) {
   };
   state.idxPrev = idxValue();
   state.overnight = makeOvernight();
+  seedBacklog();
 }
 const powered = ci => ci < 8 || (ci < 10 && state.up.lines >= 1) || state.up.lines >= 2;
 function idxValue() { let s = 0; for (const c of state.cos) s += c.price / c.base; return 28000 * s / state.cos.length; }
@@ -1544,17 +1545,17 @@ function planDay(from) {
 function makeOvernight() {
   const out = [];
   for (let k = 0, n = ri(1, 2); k < n; k++) {
-    const tl = hhmm(ri(1080, 1860));
+    const tr = ri(1080, 1860), tl = hhmm(tr);
     if (Math.random() < .7) {
       const ci = ri(0, state.cos.length - 1), c = state.cos[ci], pos = Math.random() < .5;
       const tpl = pos ? (Math.random() < .5 ? pick(SECTOR_POS[c.sector]) : pick(POS_GENERIC)) : (Math.random() < .5 ? pick(SECTOR_NEG[c.sector]) : pick(NEG_GENERIC));
-      out.push({ id: state.seq++, type: 'co', ci, m: rand(tpl[0], tpl[1]) * .85, text: tpl[2](c), tag: '夜間', tl });
+      out.push({ id: state.seq++, type: 'co', ci, m: rand(tpl[0], tpl[1]) * .85, text: tpl[2](c), tag: '夜間', tl, tr });
     } else {
       const fk = pick(Object.keys(FACT)), dir = Math.random() < .5 ? 1 : -1;
-      out.push({ id: state.seq++, type: 'macro', f: fk, dir, mag: rand(.015, .035), text: MACRO[fk][dir > 0 ? 'p' : 'n'](), tag: '夜間', tl });
+      out.push({ id: state.seq++, type: 'macro', f: fk, dir, mag: rand(.015, .035), text: MACRO[fk][dir > 0 ? 'p' : 'n'](), tag: '夜間', tl, tr });
     }
   }
-  return out;
+  return out.sort((a, b) => a.tr - b.tr);
 }
 
 /* =========================================================
@@ -1565,9 +1566,16 @@ function addImpact(c, m, mode, n) {
   if (mode === 'drift') { if (open && n > 0) { c.impacts.push({ per: m / n, n, d: 0 }); c.volBoost += .6; } return; }
   if (!open) { c.gap += m; return; }
   if (mode === 'news') {
-    c.impacts.push({ per: m * .55 / 3, n: 3, d: 0 }, { per: m * .45 / 16, n: 16, d: 0 });
-    if (Math.random() < .3) c.impacts.push({ per: m * .25 / 3, n: 3, d: 0 }, { per: -m * .25 / 25, n: 25, d: 8 });
-    c.volBoost += Math.min(10, Math.abs(m) * 140);
+    /* 早耳（0〜4分）12%／本格的な反応（6〜20分）58%／追随（16〜36分）30%
+       1×速なら、ニュースから5秒ほどで動けば値動きの7割に間に合う */
+    c.impacts.push({ per: m * .12 / 4, n: 4, d: 0 }, { per: m * .58 / 14, n: 14, d: 6 }, { per: m * .30 / 20, n: 20, d: 16 });
+    if (Math.random() < .3) c.impacts.push({ per: m * .25 / 6, n: 6, d: 14 }, { per: -m * .25 / 25, n: 25, d: 26 });
+    c.volBoost += Math.min(6, Math.abs(m) * 70);
+    c.lateBoost = Math.max(c.lateBoost || 0, Math.min(6, Math.abs(m) * 80)); c.lateAt = 6;
+  } else if (mode === 'hype') {
+    /* 見出しだけの材料：少し遅れて飛びつき買い（売り）→ じわじわ剥落 */
+    c.impacts.push({ per: m / 8, n: 8, d: 3 }, { per: -m / 30, n: 30, d: 24 });
+    c.volBoost += Math.abs(m) * 60;
   } else if (mode === 'pump') {
     c.impacts.push({ per: m / 5, n: 5, d: 0 }, { per: -m / 30, n: 30, d: 20 });
     c.volBoost += Math.abs(m) * 90;
@@ -1578,7 +1586,7 @@ function applyEvent(e) {
     const F = FACT[e.f], cis = [];
     for (const c of state.cos) { const s = (F.sens[c.sector] || 0) + (F.sens.all || 0), m = e.mag * e.dir * s; if (Math.abs(m) > .003) { addImpact(c, m, 'news'); cis.push(c.i); } }
     fx({ t: 'flash', cis, d: 2.5 });
-  } else if (e.type === 'bait') { const c = state.cos[e.ci]; addImpact(c, e.hdir * rand(.015, .03), 'pump'); addImpact(c, e.m, 'news'); fx({ t: 'flash', cis: [e.ci], d: 3.5 }); }
+  } else if (e.type === 'bait') { const c = state.cos[e.ci]; addImpact(c, e.hdir * rand(.015, .03), 'hype'); addImpact(c, e.m, 'news'); fx({ t: 'flash', cis: [e.ci], d: 3.5 }); }
   else { addImpact(state.cos[e.ci], e.m, 'news'); linkImpacts(e); fx({ t: 'flash', cis: [e.ci], d: 3.5 }); }
 }
 function priceSim() {
@@ -1597,6 +1605,7 @@ function priceSim() {
     const p = clamp(roundTick(c.fair), lo, hi), stop = p >= hi || p <= lo;
     const v = Math.round(c.baseVol * (.5 + Math.random()) * (1 + c.volBoost) * (stop ? .25 : 1) * (first ? 6 : 1) / 100);
     c.volBoost *= .9;
+    if (c.lateAt > 0 && --c.lateAt === 0) { c.volBoost += c.lateBoost || 0; c.lateBoost = 0; }
     prices.push(p); vols.push(v);
   }
   recordMinute(m, prices, vols.map(v => v * 100));
@@ -1729,7 +1738,7 @@ function gameOver(reason) {
    ========================================================= */
 let unread = { news: 0, sns: 0, team: 0 };
 function publishNews(e, tag) {
-  addFeed({ k: 'news', nid: e.id, tl: e.tl || hhmm(state.minute), tag, text: e.text, body: newsBody(e), mg: Math.round(Math.abs(e.type === 'macro' ? (e.mag || 0) * 2 : e.type === 'bait' ? .03 : e.type === 'flash' ? .08 : e.m || 0) * 100), s: e.type === 'bait' ? e.hdir : e.type === 'macro' ? e.dir : e.type === 'flash' ? -1 : Math.sign(e.m || 0), rs: e.type === 'bait' || e.type === 'flash' ? 0 : e.type === 'macro' ? e.dir : Math.abs(e.m || 0) < .012 ? 0 : Math.sign(e.m), codes: e.type === 'macro' || e.ci == null ? [] : [state.cos[e.ci].code], f: e.f || null });
+  addFeed({ ...(e.old ? { old: 1 } : {}), k: 'news', nid: e.id, tl: e.tl || hhmm(state.minute), tag, text: e.text, body: newsBody(e), mg: Math.round(Math.abs(e.type === 'macro' ? (e.mag || 0) * 2 : e.type === 'bait' ? .03 : e.type === 'flash' ? .08 : e.m || 0) * 100), s: e.type === 'bait' ? e.hdir : e.type === 'macro' ? e.dir : e.type === 'flash' ? -1 : Math.sign(e.m || 0), rs: e.type === 'bait' || e.type === 'flash' ? 0 : e.type === 'macro' ? e.dir : Math.abs(e.m || 0) < .012 ? 0 : Math.sign(e.m), codes: e.type === 'macro' || e.ci == null ? [] : [state.cos[e.ci].code], f: e.f || null });
 }
 function postSNS(acct, text, quiet, ch) { addFeed({ k: 'sns', tl: hhmm(state.minute), acct, text, q: quiet ? 1 : 0, ch: ch == null ? 'all' : ch }); }
 function itemCi(item) { return typeof item.ch === 'number' ? item.ch : -1; }
@@ -1747,7 +1756,8 @@ function addFeed(item) {
   for (let i = state.feed.length - 1, n = 0; i >= 0; i--) { const x = state.feed[i]; if (x.k === item.k && (item.k !== 'sns' || x.ch === item.ch)) { n++; if (n > cap) state.feed.splice(i, 1); } }
   if (NET.role === 'host') NET.out.push(['f', item]);
   if (item.k !== 'sns' || item.ch === 'all') renderFeedItem(item, true);
-  if (item.k === 'news') { newsDirty = true; queueCrowd(item); if (state.phase !== 'title') notifyNews(item); for (const code of item.codes || []) { const c = co(code); if (c) c.flash = Math.max(c.flash, 3.5); } sfx(item.tag === '先行' ? 'pre' : 'news'); }
+  if (item.k === 'news' && item.old) newsDirty = true;
+  else if (item.k === 'news') { newsDirty = true; queueCrowd(item); if (state.phase !== 'title') notifyNews(item); for (const code of item.codes || []) { const c = co(code); if (c) c.flash = Math.max(c.flash, 3.5); } sfx(item.tag === '先行' ? 'pre' : 'news'); }
   else if (item.k === 'sns') {
     if (!item.q && !item.amb) sfx('sns');
     if (item.ch === 'all') { snsDirty = true; if (SEAT.ci >= 0 && LOCAL.itab === 'all') markInfo(SEAT.ci); }
@@ -1762,7 +1772,7 @@ function codeChip(code) {
 function feedHTML(item) {
   if (item.k === 'sep') return `<li class="sep">${esc(item.text)}</li>`;
   if (item.k === 'news') {
-    const cls = { '決算': 't-earn', '先行': 't-pre', 'マクロ': 't-macro', '夜間': 't-night', '緊急': 't-urgent' }[item.tag] || '';
+    const cls = { '決算': 't-earn', '先行': 't-pre', 'マクロ': 't-macro', '夜間': 't-night', '前日': 't-night', '緊急': 't-urgent' }[item.tag] || '';
     const extra = item.f && FACT[item.f] ? `<span class="tag t-macro">${esc(FACT[item.f].label)}</span>` : '';
     return `<li class="it news" data-nid="${esc(item.nid)}"><details><summary><div class="meta"><time>${esc(item.tl)}</time><span class="tag ${cls}">${esc(item.tag)}</span>${extra}<span class="more">記事を読む</span></div><p>${esc(item.text)}</p></summary><p class="nbody">${esc(item.body || '')}</p></details>${(item.codes || []).length ? `<div class="codes">${item.codes.map(codeChip).join('')}</div>` : ''}</li>`;
   }
@@ -1891,6 +1901,39 @@ function resetDayLocal() {
   markAllDirty(); updateNote(); deskDirty = true;
 }
 function closeCandles() { for (const c of state.cos) { if (c.cur) { c.hist.push(c.cur); if (c.hist.length > 70) c.hist.shift(); c.cur = null; } } }
+/* 新しく始めたとき：前日のニュースと、今朝までの #株クラ を用意しておく */
+function yHHMM(k) { let m = 540 + k * 10; if (m >= 690) m += 60; return hhmm(Math.min(925, m)); }
+function seedBacklog() {
+  const items = [];
+  const at = (key, tl, it) => items.push({ key, it: Object.assign({ tl }, it) });
+  const amb = (ch, text) => ({ k: 'sns', acct: 'a' + ri(0, AMB_NAMES.length - 1), text, ch, amb: 1, q: 1 });
+  /* 前日の個別ニュース：チャートにもその時刻に窓を作る（今の株価で終わるように、それより前を動かす） */
+  const pool = state.cos.filter(c => powered(c.i)).map(c => c.i);
+  for (let k = 0, n = ri(3, 4); k < n && pool.length; k++) {
+    const ci = pool.splice(ri(0, pool.length - 1), 1)[0], c = state.cos[ci], pos = Math.random() < .5;
+    const tpl = pos ? (Math.random() < .5 ? pick(SECTOR_POS[c.sector]) : pick(POS_GENERIC)) : (Math.random() < .5 ? pick(SECTOR_NEG[c.sector]) : pick(NEG_GENERIC));
+    const m = rand(tpl[0], tpl[1]) * .85, H = c.hist, kk = ri(4, Math.max(5, H.length - 5)), f = Math.exp(-m);
+    for (let j = 0; j < kk; j++) { const h = H[j]; h.o = roundTick(h.o * f); h.h = roundTick(h.h * f); h.l = roundTick(h.l * f); h.c = roundTick(h.c * f); }
+    { const h = H[kk]; h.o = roundTick(h.o * f); h.h = Math.max(h.h, h.o, h.c); h.l = Math.min(h.l, h.o, h.c); h.v = Math.round(h.v * (2 + Math.abs(m) * 40) / 100) * 100; }
+    for (let j = kk + 1; j < Math.min(H.length, kk + 4); j++) H[j].v = Math.round(H[j].v * 1.8 / 100) * 100;
+    const e = { id: state.seq++, type: 'co', ci, m, text: tpl[2](c), tag: '前日', old: 1 };
+    const tmin = 540 + kk * 10 + (540 + kk * 10 >= 690 ? 60 : 0);
+    items.push({ key: tmin, news: e, tl: '前日 ' + yHHMM(kk) });
+    const nm = c.short, tag = `#${c.code} `, cp0 = (m > 0 ? CROWD.up : CROWD.down).slice(), cp = { length: 1 }; const pickC = () => cp0.length > 1 ? cp0.splice(ri(0, cp0.length - 1), 1)[0] : cp0[0];
+    for (let j = 0, n2 = ri(2, 3); j < n2; j++) at(tmin + ri(1, 12), '前日 ' + hhmm(Math.min(929, tmin + ri(1, 12))), amb('all', tag + pickC()(nm)));
+    for (let j = 0, n2 = ri(1, 2); j < n2; j++) at(tmin + ri(1, 12), '前日 ' + hhmm(Math.min(929, tmin + ri(1, 12))), amb(ci, pickC()(nm)));
+    at(1440 + ri(420, 505), null, amb('all', tag + pick(m > 0 ? ['昨日の材料、今日も続くかな', '昨日は乗り遅れた。今日こそ', '昨日の上げ、利確されそう', '昨日の材料で今日も買われるか見もの'] : ['昨日の下げ、今日は戻す？', '昨日の悪材料、まだ消化しきれてない気がする', '昨日の下げで拾うか迷う', '昨日のあれ、今日も売られそう'])));
+  }
+  /* 今朝の #株クラ と各社のチャンネル */
+  for (let k = 0, n = ri(6, 9); k < n; k++) at(1440 + ri(420, 508), null, amb('all', Math.random() < .5 ? pick(RX.quiet) : pick(['おはようございます。今日も生き残る', '夜間のニュース確認中', '寄り前の気配値を眺めてる', 'コーヒー二杯目', '今日は何が動くかな', '昨日の負けを取り返す', '先物は静か', '決算予定だけは確認しとこう'])));
+  for (const c of state.cos) { if (!powered(c.i)) continue; for (let k = 0, n = ri(1, 2); k < n; k++) at(1440 + ri(420, 508), null, amb(c.i, coAmbText(c))); }
+  items.sort((a, b) => a.key - b.key);
+  for (const x of items) {
+    if (x.news) { publishNews(Object.assign({}, x.news, { tl: x.tl }), '前日'); continue; }
+    const it = x.it; if (it.tl == null) it.tl = hhmm(x.key - 1440);
+    addFeed(it);
+  }
+}
 function startDay() {
   resetDayLocal(); bcast({ t: 'newday' });
   state.minute = T_PRE;
@@ -1899,7 +1942,7 @@ function startDay() {
   state.ready = {}; state.watch = {}; state.coPosts = {};
   planDay();
   addFeed({ k: 'sep', text: `DAY ${state.day}　第${termOf(state.day)}期ノルマ ${yen(state.quota)}（〆 DAY ${deadlineOf(state.day)}）` });
-  const night = state.overnight || []; state.overnight = [];
+  const night = state.overnight && state.overnight.length ? state.overnight : state.day === 1 ? makeOvernight() : []; state.overnight = [];
   for (const e of night) { publishNews(e, '夜間'); applyEvent(e); }
   if (state.day === 1) postSNS('fukumi', isMulti() ? '新人チームがデスクについたらしい。ノルマ地獄へようこそ' : '今日から新人が入るらしい。ノルマ地獄へようこそ', true, 'all');
   { const left = daysLeft(state.day), t = termOf(state.day);
@@ -1907,6 +1950,7 @@ function startDay() {
     else fx({ t: 'toast', text: `DAY ${state.day} 開始。第${t}期のノルマは ${yen(state.quota)}（〆 DAY ${deadlineOf(state.day)} の15:30・あと${left}日）`, ms: 6000 });
     if (left === TERM - 1 && state.day > 1) fx({ t: 'boss', text: `社長（内線）「第${t}期だ。ノルマは${yen(state.quota)}。DAY ${deadlineOf(state.day)}までに作れ」` }); }
   setPhase('market');
+  for (const e of night) { const it = state.feed.find(x => x.k === 'news' && x.nid === e.id); if (it) queueCrowd(it); }
   updateLobbyPresence();
   saveGame();
   hudDirty = posDirty = boardDirty = newsDirty = snsDirty = true;
@@ -2267,7 +2311,7 @@ function genAmbient(m) {
 function flowRate() {
   const now = state.minute; let n = 0;
   const f = state.feed;
-  for (let i = f.length - 1; i >= 0 && n < 200; i--) { const x = f[i]; if (x.k !== 'sns' || x.ch !== 'all') continue; const [hh, mm] = String(x.tl).split(':').map(Number); const t = hh * 60 + mm; if (now - t > 5 || now - t < 0) break; n++; }
+  for (let i = f.length - 1; i >= 0 && n < 200; i--) { const x = f[i]; if (x.k !== 'sns' || x.ch !== 'all') continue; const [hh, mm] = String(x.tl).split(':').map(Number); const t = hh * 60 + mm; if (!(t >= 0) || now - t > 5 || now - t < 0) break; n++; }
   return n / 5;
 }
 /* ---- ニュース通知（右下） ---- */
@@ -2520,7 +2564,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v20 P2P';
+const GAME_VERSION = 'v21 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
