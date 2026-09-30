@@ -582,7 +582,7 @@ body.seated .tl{width:250px}
       <ul class="hpos" id="hPosList"></ul>
     </section>
     <ol class="hlog" id="hLog" aria-live="polite"></ol>
-    <div class="hhint seathint" id="hHintSeat"><kbd>E</kbd> 立つ　<kbd>B</kbd> 買う　<kbd>S</kbd> 売る　<kbd>↑↓</kbd> 株数　<kbd>Tab</kbd> 情報切替<br>右ドラッグ 見回す　ホイール ズーム</div>
+    <div class="hhint seathint" id="hHintSeat"><kbd>E</kbd> 立つ　<kbd>↑↓</kbd> 株数　<kbd>Tab</kbd> 情報切替<br>右ドラッグ 見回す　ホイール ズーム</div>
     <div class="hhint" id="hHint"><kbd>WASD</kbd> 移動 <kbd>Shift</kbd> 走る <kbd>マウス</kbd> 視点<br><kbd>E</kbd>・クリック 座る／画面を見る <kbd>Q</kbd> 指さし<br>ホイール ズーム <kbd>1</kbd>〜<kbd>6</kbd> スタンプ <kbd>Enter</kbd> チャット <kbd>T</kbd> チーム <kbd>P</kbd> 停止</div>
     <div id="notifs" aria-live="polite"></div>
     <div class="fps" id="fps" aria-hidden="true"></div>
@@ -1049,7 +1049,7 @@ function upNextClv(u, s) { const lv = u.lv(s); if (!u.cap || lv >= u.max) return
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
 const TERM = 3, GOAL_DAYS = 12, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v11';
-const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail', 'summon', 'cleared2'];
+const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI', 'bossDoor', 'punched', 'mail', 'summon', 'cleared2', 'infected'];
 
 /* =========================================================
    状態
@@ -1231,6 +1231,13 @@ function ctl(d, key, isLocal) {
     }
   }
   else if (a === 'mailans') { mailAnswer(key, d.id | 0, d.o | 0); }
+  else if (a === 'virus') {
+    const ci = d.ci | 0, mb = mailBoxOf(key), x = mb.box.find(y => y.id === (d.id | 0)); if (!x || x.k !== 'virus' || x.inf || !state.cos[ci]) return;
+    if (mb.c[x.s] && mb.c[x.s].blk) return;
+    x.inf = 1; state.infected = state.infected || {}; const dur = ri(100, 160); state.infected[ci] = { until: postClock() + dur, who: String(key).slice(0, 80) };
+    fx({ t: 'toast', text: `${nameOf(key)}の席（${stationLabel(ci)} ${state.cos[ci].short}）のPCがウイルスに感染！ 約${Math.round(dur / 60 * 10) / 10}時間使えません`, cls: 'bad' }); fx({ t: 'sfx', k: 'alarm' });
+    markInfo(ci); markDirty(ci);
+  }
   else if (a === 'mailblk') { const s = String(d.s || ''); if (!MAILERS[s]) return; const mb = mailBoxOf(key), cc = mb.c[s] || (mb.c[s] = { rel: 0, blk: false }); cc.blk = !!d.v; hudDirty = true; }
   else if (a === 'buyfol') {
     const n = FOL_PACKS[d.i | 0]; if (!n || !['market', 'shop'].includes(state.phase)) return;
@@ -1254,7 +1261,7 @@ function ctl(d, key, isLocal) {
     const ci = d.ci | 0; if (ci < 0 || ci >= state.cos.length) return;
     const u = d.u && typeof d.u === 'object' ? d.u : {};
     state.deskUI = state.deskUI || {};
-    state.deskUI[ci] = { itab: ['co', 'news', 'info', 'acct', 'mail'].includes(u.itab) ? u.itab : 'co', art: typeof u.art === 'number' ? u.art : null, prof: typeof u.prof === 'string' ? u.prof.slice(0, 80) : null, who: String(key).slice(0, 80) };
+    state.deskUI[ci] = { itab: ['co', 'news', 'info', 'acct', 'mail'].includes(u.itab) ? u.itab : 'co', art: typeof u.art === 'number' ? u.art : null, prof: typeof u.prof === 'string' ? u.prof.slice(0, 80) : null, mail: typeof u.mail === 'number' ? u.mail : null, who: String(key).slice(0, 80) };
     markInfo(ci);
   }
   else if (a === 'force') { if (isLocal && state.phase === 'shop') nextDay(); }
@@ -2788,7 +2795,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v32 P2P';
+const GAME_VERSION = 'v33 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -3518,11 +3525,23 @@ function uiBtn(g, s, id, x, y, w, h, label, o) {
   g.fillStyle = o.off ? '#4a5570' : o.fg || C.fg; g.font = o.font || `700 30px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.fillText(label, x + w / 2, y + h / 2 + 1, w - 12); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
 }
+function drawVirusScreen(g, W, H, ci) {
+  const f = infected(ci), left = f ? Math.max(0, f.until - postClock()) : 0;
+  g.fillStyle = '#12020a'; g.fillRect(0, 0, W, H);
+  for (let y = 0; y < H; y += 6) { g.fillStyle = `rgba(255,40,70,${.03 + Math.random() * .05})`; g.fillRect(0, y, W, 2); }
+  for (let k = 0; k < 8; k++) { g.fillStyle = 'rgba(255,60,90,.25)'; g.fillRect(Math.random() * W, Math.random() * H, 40 + Math.random() * 200, 4); }
+  g.textAlign = 'center'; g.fillStyle = '#ff5468'; g.font = `900 ${Math.round(H * .22)}px ${F_JP}`; g.fillText('☠', W / 2, H * .36);
+  g.fillStyle = '#fff'; g.font = `900 ${Math.round(H * .08)}px ${F_JP}`; g.fillText('ウイルスに感染しました', W / 2, H * .54, W - 40);
+  g.fillStyle = '#ffb3be'; g.font = `700 ${Math.round(H * .05)}px ${F_JP}`; g.fillText('このPCは使えません（情報システム部が対応中）', W / 2, H * .65, W - 40);
+  g.fillStyle = '#ffd166'; g.font = `900 ${Math.round(H * .075)}px ${F_NUM}`; g.fillText(`復旧まで あと ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`, W / 2, H * .8, W - 40);
+  g.textAlign = 'left';
+}
 function drawDeskMain(g, s, ci) {
   const W = MAIN_W, H = MAIN_H, c = state.cos[ci], mine = SEAT.ci === ci;
   s.live = mine; s.regions = [];
   g.fillStyle = C.bg; g.fillRect(0, 0, W, H);
   if (!powered(ci)) return;
+  if (infected(ci)) { s.regions = []; drawVirusScreen(g, W, H, ci); return; }
   const ch = c.price / c.prevClose - 1, col = upCol(ch);
   g.fillStyle = C.amber; g.font = `700 30px ${F_NUM}`; g.fillText(stationLabel(ci), 28, 56);
   g.fillStyle = C.fg; g.font = `900 40px ${F_JP}`; g.fillText(c.name, 92, 58, 480);
@@ -3609,11 +3628,19 @@ const MAILERS = {
     chat: [['…', '…'], ['確認', '確認した。'], ['…', '長文は読まない。']],
     tip: (c, d, w) => ['…', `${c.code} ${d > 0 ? '上' : '下'} ${w} 以上`] },
 };
+Object.assign(MAILERS, {
+  yamaneko: { name: 'ヤマネコ運輸', org: '配達のお知らせ', type: 'scam', virus: true, col: '#e0a030', chat: [['', '']],
+    vm: [['【不在通知】お荷物をお持ち帰りしました', 'お客様宛のお荷物をお届けにあがりましたが、ご不在のため持ち帰りました。再配達は添付のファイルからお手続きください。　添付：再配達依頼書.zip'], ['【重要】お届け先の住所に不備があります', 'お荷物のお届け先に不備がございます。添付ファイルを開いてご確認ください。　添付：住所確認.exe']] },
+  keiri: { name: '経理部', org: 'カブトデスク証券（社内）', type: 'scam', virus: true, col: '#7dd3fc', chat: [['', '']],
+    vm: [['【至急】請求書のご確認', 'お疲れさまです。至急、添付の請求書をご確認ください。開くときは「マクロを有効にする」を押してください。　添付：請求書_0930.xlsm'], ['【要対応】経費精算の差し戻し', '経費精算に不備があったため差し戻しました。添付の様式で再提出してください。　添付：精算様式.docm']] },
+  secure: { name: 'セキュリティセンター', org: 'セキュリティ警告', type: 'scam', virus: true, col: '#ff5468', chat: [['', '']],
+    vm: [['【警告】あなたのPCはウイルスに感染しています', 'お使いのPCから危険なウイルスが検出されました！今すぐ添付の駆除ツールを実行してください！　添付：CleanTool.exe'], ['【最終警告】アカウントが停止されます', 'セキュリティ上の問題により、アカウントが停止されます。添付ファイルから本人確認を行ってください。　添付：本人確認.html']] },
+});
 const MAIL_IDS = Object.keys(MAILERS);
 MAILERS.takumi.chat.push(['【再送】重要なお知らせ！！！', '先ほどのメールはご覧いただけましたか！？！？チャンスは今だけです！！！🔥🔥'], ['【緊急】あなただけに特別公開', '会員の皆様、昨日も爆益でした！！！あなたも今すぐ！！！💰'], ['返信お待ちしております！！！', '返信がないのでもう一度送ります！！！爆益サロンへようこそ！！！'], ['🚀🚀🚀', '🚀🚀🚀 月まで行きます 🚀🚀🚀 詳細は折り返し！！！']);
 MAILERS.gwp.chat.push(['【重要】最終のご案内', 'これが最後のご案内となります。本日中にお手続きいただけない場合、特別枠が失効いたします。'], ['【お知らせ】AI予測の精度が向上しました', '弊社AIの的中率が99.1%に向上いたしました。ぜひこの機会に。'], ['【再送】お手続きのお願い', '先日お送りしたご案内について、まだお手続きが確認できておりません。']);
 MAILERS.miki.chat.push(['ねえ〜無視しないで💦', '返事まだ〜？さみしいよ〜🥺'], ['見て見て〜', '新しいネイルした〜💅 かわいい？？'], ['ちょっと相談〜', '実はいい投資話があるんだけど…今度会えない？💕'], ['おやすみ〜', 'もう寝る？わたしはまだ起きてるよ〜🌙']);
-const MAIL_ADDR = { hayase: 'r.hayase@aoba-sec.co.jp', okochi: 'm.okochi@kanreki-mail.jp', minobe: 'minobe@kabuto-shimbun.jp', kiriya: 'kiriya.kengyo@freemail.ne.jp', takumi: 'god_takumi_777@bakueki-salon.xyz', gwp: 'info@global-wealth-partners.biz', miki: 'miki.love.2525@kawaii-mail.xyz', sennin: 'kabu-sennin@yamaoku.or.jp', mrx: 'x@0x0.invalid' };
+const MAIL_ADDR = { yamaneko: 'info@yamaneko-unyu.delivery-check.xyz', keiri: 'keiri@kabutodesk-co.jp', secure: 'alert@secure-center-support.top', hayase: 'r.hayase@aoba-sec.co.jp', okochi: 'm.okochi@kanreki-mail.jp', minobe: 'minobe@kabuto-shimbun.jp', kiriya: 'kiriya.kengyo@freemail.ne.jp', takumi: 'god_takumi_777@bakueki-salon.xyz', gwp: 'info@global-wealth-partners.biz', miki: 'miki.love.2525@kawaii-mail.xyz', sennin: 'kabu-sennin@yamaoku.or.jp', mrx: 'x@0x0.invalid' };
 /* プレイヤーのアドレス：席番号ごとに別 */
 function addrOf(key) { return `dealer${Math.max(0, seatOfKey(key)) + 1}@kabutodesk.co.jp`; }
 /* 送信：たまに同じメールが複数のプレイヤーに届く（業者は一斉送信しがち） */
@@ -3658,7 +3685,7 @@ function pushMail(key, mb, mail) {
 }
 function genMail(key) {
   const mb = mailBoxOf(key), m = state.minute;
-  const open = MAIL_IDS.filter(s => !(mb.c[s] && mb.c[s].blk) && !((state.up.mailsec | 0) >= 9 && MAILERS[s].type === 'scam'));
+  const open = MAIL_IDS.filter(s => !MAILERS[s].virus && !(mb.c[s] && mb.c[s].blk) && !((state.up.mailsec | 0) >= 9 && MAILERS[s].type === 'scam'));
   if (!open.length) return;
   const unmet = open.filter(s => !mb.c[s]);
   let s;
@@ -3686,26 +3713,38 @@ function genMail(key) {
 }
 function spamMail(key, s) {
   const mb = mailBoxOf(key), P = MAILERS[s];
+  if (P.virus) { if (!mb.c[s]) mb.c[s] = { rel: 0, blk: false }; pushMail(key, mb, { s, k: 'virus', v: ri(0, P.vm.length - 1) }); return; }
   if (!mb.c[s]) { mb.c[s] = { rel: 0, blk: false }; pushMail(key, mb, { s, k: 'intro', v: 0 }); return; }
   const r = Math.random();
   if (P.ask && r < .2 && !mb.box.some(x => x.s === s && x.k === 'ask' && x.ans == null)) { pushMail(key, mb, { s, k: 'ask', v: 0 }); return; }
   if (r < .55) { const pool = state.cos.filter(c => powered(c.i)); if (pool.length) { sendMail(key, { s, k: 'tip', v: 0, ci: pick(pool).i, d: Math.random() < .5 ? 1 : -1, w: whenLabel(state.minute + ri(20, 90), 2), lv: 2, eid: -1 }); return; } }
   sendMail(key, { s, k: 'chat', v: ri(0, P.chat.length - 1) });
 }
+function infected(ci) { const f = state && state.infected && state.infected[ci]; return f && postClock() < f.until ? f : null; }
+/* 感染したPCの復旧（ホスト） */
+function virusTick() {
+  if (!state.infected) return;
+  for (const ci in state.infected) {
+    const st = stations[ci]; if (st) { st.main.dirty = true; st.info.dirty = true; }
+    if (postClock() >= state.infected[ci].until) { delete state.infected[ci]; const c = state.cos[ci]; fx({ t: 'toast', text: `${stationLabel(+ci)}（${c ? c.short : ''}）のPCが復旧しました`, cls: 'good' }); }
+  }
+}
 function mailTick(m) {
+  virusTick();
   if (!runsSim() || state.phase !== 'market') return;
   let changed = false;
   for (const key of mailMembers()) {
     const mb = mailBoxOf(key);
     if (!mb.next || mb.nd !== state.day || mb.next < T_PRE || mb.next > T_CLOSE + 60) { mb.nd = state.day; mb.next = Math.max(m + 2, T_PRE + ri(4, 12)); }
-    if (m >= mb.next) { genMail(key); mb.next = m + ri(18, 38); changed = true; }
+    if (m >= mb.next) { genMail(key); mb.next = m + ri(32, 56); changed = true; }
     /* 迷惑メール：ブロックしない限り、業者ごとに35〜65分おきに送りつけてくる（3社で20分に1通ほど） */
     if ((state.up.mailsec | 0) < 9) {
       mb.sp = mb.sp || {};
       for (const s of MAIL_IDS) {
         if (MAILERS[s].type !== 'scam' || (mb.c[s] && mb.c[s].blk)) continue;
         let sp = mb.sp[s]; if (!sp || sp.d !== state.day) sp = mb.sp[s] = { d: state.day, t: m + ri(5, 40) };
-        if (m >= sp.t) { spamMail(key, s); sp.t = m + ri(35, 65); changed = true; }
+        if (MAILERS[s].virus && !sp.v) { sp.v = 1; sp.t = m + ri(60, 260); }
+        if (m >= sp.t) { spamMail(key, s); sp.t = m + (MAILERS[s].virus ? ri(180, 320) : ri(35, 65)); changed = true; }
       }
     }
   }
@@ -3719,12 +3758,14 @@ function mailResolve(e) {
 /* 返信の選択肢 */
 function mailOpts(x) {
   const P = MAILERS[x.s];
-  if (x.k === 'ask') return [{ l: `支払う（${yen(x.pay || P.ask[2])}）`, pay: P.ask[2], rel: P.type === 'genius' ? 25 : 20 }, { l: '丁寧に断る', rel: -2 }];
-  if (x.k === 'tip') return [{ l: 'お礼を返信する', rel: P.short ? 3 : 8 }, { l: 'ひとことだけ返す', rel: P.short ? 10 : 3 }];
-  return [{ l: '丁寧に返信する', rel: P.short ? 4 : 15 }, { l: 'ひとことだけ返す', rel: P.short ? 14 : 4 }];
+  if (x.k === 'virus') return [];
+  if (x.k === 'ask') return [{ l: `支払う（${yen(x.pay || P.ask[2])}）`, pay: P.ask[2], rel: P.type === 'genius' ? 10 : 8 }, { l: '丁寧に断る', rel: -2 }];
+  if (x.k === 'tip') return [{ l: 'お礼を返信する', rel: P.short ? 1 : 3 }, { l: 'ひとことだけ返す', rel: P.short ? 4 : 1 }];
+  return [{ l: '丁寧に返信する', rel: P.short ? 2 : 6 }, { l: 'ひとことだけ返す', rel: P.short ? 6 : 2 }];
 }
 function mailText(x) {
   const P = MAILERS[x.s]; if (!P) return ['', ''];
+  if (x.k === 'virus') return P.vm[x.v % P.vm.length];
   if (x.k === 'intro') return P.intro;
   if (x.k === 'ask') return [P.ask[0], P.ask[1]];
   if (x.k === 'chat') return P.chat[x.v % P.chat.length];
@@ -3770,12 +3811,15 @@ function openMail(id) {
 function relStars(g, x, y, rel, sz) {
   for (let i = 0; i < 5; i++) { g.fillStyle = rel >= (i + 1) * 20 ? '#ff8fa3' : rel > i * 20 ? 'rgba(255,143,163,.5)' : 'rgba(255,255,255,.14)'; g.beginPath(); const cx = x + i * (sz + 4) + sz / 2, cy = y; g.moveTo(cx, cy + sz * .35); g.bezierCurveTo(cx - sz * .7, cy - sz * .1, cx - sz * .35, cy - sz * .6, cx, cy - sz * .2); g.bezierCurveTo(cx + sz * .35, cy - sz * .6, cx + sz * .7, cy - sz * .1, cx, cy + sz * .35); g.fill(); }
 }
-function drawMailTab(g, s, ci) {
+function drawMailTab(g, s, ci, owner, openId) {
   const W = INFO_W, H = INFO_H, live = s && s.live;
-  if (!live) { g.fillStyle = C.faint; g.font = `700 28px ${F_JP}`; g.textAlign = 'center'; g.fillText('メール（非公開）', W / 2, H / 2); g.textAlign = 'left'; return; }
-  const key = myKey(), mb = peekBox(key), rd = LOCAL.mailRead || (LOCAL.mailRead = {});
+  const key = live ? myKey() : owner;
+  if (!key) { g.fillStyle = C.faint; g.font = `700 28px ${F_JP}`; g.textAlign = 'center'; g.fillText('空席', W / 2, H / 2); g.textAlign = 'left'; return; }
+  const mb = peekBox(key), rd = live ? (LOCAL.mailRead || (LOCAL.mailRead = {})) : {};
   const list = mb.box.filter(x => !(mb.c[x.s] && mb.c[x.s].blk)).slice().reverse();
-  const cur = LOCAL.mailOpen != null ? mb.box.find(x => x.id === LOCAL.mailOpen) : null;
+  const openNow = live ? LOCAL.mailOpen : openId;
+  const cur = openNow != null ? mb.box.find(x => x.id === openNow) : null;
+  if (live && cur && cur.k === 'virus' && !cur.inf && !(mb.c[cur.s] && mb.c[cur.s].blk) && !(LOCAL.virDone || {})[cur.id] && !(LOCAL.vir && LOCAL.vir.id === cur.id)) LOCAL.vir = { id: cur.id, ci, t0: performance.now() };
   if (cur && MAILERS[cur.s]) {
     const P = MAILERS[cur.s], [subj, body] = mailText(cur), rel = relOf(mb, cur.s), blk = mb.c[cur.s] && mb.c[cur.s].blk;
     rd[cur.id] = 1;
@@ -3790,7 +3834,7 @@ function drawMailTab(g, s, ci) {
     g.fillStyle = C.line; g.fillRect(14, 128, W - 28, 2);
     { const tos = cur.to && cur.to.length > 1 ? cur.to : [key];
       g.fillStyle = C.faint; g.font = `600 15px ${F_JP}`; g.fillText('宛先', 24, 152);
-      g.fillStyle = C.muted; g.font = `600 15px ${F_NUM}`; g.fillText(tos.map(k => `${k === key ? 'あなた' : nameOf(k)} <${addrOf(k)}>`).join('、'), 66, 152, W - 90); }
+      g.fillStyle = C.muted; g.font = `600 15px ${F_NUM}`; g.fillText(tos.map(k => `${k === myKey() ? 'あなた' : nameOf(k)} <${addrOf(k)}>`).join('、'), 66, 152, W - 90); }
     g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText(subj, 24, 188, W - 150);
     g.fillStyle = C.faint; g.font = `500 18px ${F_NUM}`; g.textAlign = 'right'; g.fillText(cur.tl, W - 24, 188); g.textAlign = 'left';
     g.fillStyle = '#d3dbea'; g.font = `500 23px ${F_JP}`;
@@ -3800,7 +3844,18 @@ function drawMailTab(g, s, ci) {
       if (tag) { g.font = `900 19px ${F_JP}`; const tw = g.measureText(tag).width + 24; rr(g, 24, 432, tw, 32, 16); g.fillStyle = cur.res > 0 ? C.ok : cur.res < 0 ? C.up : '#34405a'; g.fill(); g.fillStyle = '#fff'; g.fillText(tag, 36, 455); }
       if (c) { g.fillStyle = C.muted; g.font = `700 18px ${F_JP}`; g.fillText(`関連：#${c.code} ${c.short}`, cur.res == null && cur.eid < 0 ? 24 : 150, 455); }
     }
-    if (cur.ans == null && !blk) {
+    if (cur.k === 'virus') {
+      const v = LOCAL.vir && LOCAL.vir.id === cur.id ? LOCAL.vir : null, done = (LOCAL.virDone || {})[cur.id];
+      rr(g, 20, 430, W - 40, 106, 12);
+      if (cur.inf || done === 'inf') { g.fillStyle = 'rgba(255,84,104,.25)'; g.fill(); g.fillStyle = C.up; g.font = `900 30px ${F_JP}`; g.fillText('☠ 添付ファイルが実行された……PCがウイルスに感染', 40, 494, W - 80); }
+      else if (blk || done === 'safe') { g.fillStyle = 'rgba(70,201,142,.18)'; g.fill(); g.fillStyle = C.ok; g.font = `900 28px ${F_JP}`; g.fillText('ブロック済み。添付ファイルは開かれなかった', 40, 494, W - 80); }
+      else if (v && live) { const left = Math.max(0, VIRUS_SEC - (performance.now() - v.t0) / 1000); g.fillStyle = Math.floor(left * 4) % 2 ? 'rgba(255,84,104,.35)' : 'rgba(255,84,104,.2)'; g.fill();
+        g.fillStyle = '#fff'; g.font = `900 28px ${F_JP}`; g.fillText(`⚠ 添付ファイルを自動で開いています…… あと ${left.toFixed(1)} 秒`, 40, 476, W - 80);
+        g.fillStyle = '#ffd166'; g.font = `900 24px ${F_JP}`; g.fillText('今すぐ右上の「ブロック」を押せ！', 40, 516, W - 80);
+        g.fillStyle = 'rgba(255,255,255,.2)'; g.fillRect(40, 524, W - 80, 6); g.fillStyle = C.up; g.fillRect(40, 524, (W - 80) * left / VIRUS_SEC, 6); }
+      else { g.fillStyle = '#1a2438'; g.fill(); g.fillStyle = C.muted; g.font = `700 22px ${F_JP}`; g.fillText('怪しい添付ファイル付きのメール', 40, 490, W - 80); }
+    }
+    else if (cur.ans == null && !blk) {
       mailOpts(cur).forEach((op, i) => { const bw = (W - 60) / 2; uiBtn(g, s, `mail:ans:${cur.id}:${i}`, 20 + i * (bw + 20), 478, bw, 54, op.l, { font: `700 22px ${F_JP}`, r: 10, bg: i === 0 ? 'rgba(29,111,209,.9)' : '#1a2438', off: !!op.pay && state.cash < op.pay }); });
     } else {
       g.fillStyle = C.muted; g.font = `700 20px ${F_JP}`;
@@ -3809,19 +3864,19 @@ function drawMailTab(g, s, ci) {
     }
     return;
   }
-  LOCAL.mailOpen = null;
+  if (live) LOCAL.mailOpen = null;
   const unread = list.filter(x => !rd[x.id]).length;
   g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText('受信箱', 24, 106);
   g.fillStyle = unread ? C.up : C.muted; g.font = `700 19px ${F_JP}`; g.fillText(unread ? `未読 ${unread}` : '未読なし', 130, 105);
   const blocked = MAIL_IDS.filter(x => mb.c[x] && mb.c[x].blk).length;
   g.fillStyle = C.muted; g.font = `600 17px ${F_NUM}`; g.textAlign = 'right'; g.fillText(`${addrOf(key)}${blocked ? `　ブロック中 ${blocked}` : ''}`, W - 24, 105, 420); g.textAlign = 'left';
   if (!list.length) { g.fillStyle = C.muted; g.font = `500 22px ${F_JP}`; g.fillText('メールはまだありません', 24, 170); return; }
-  const off = clamp(LOCAL.mailScroll || 0, 0, Math.max(0, list.length - 1)); LOCAL.mailScroll = off;
+  const off = live ? clamp(LOCAL.mailScroll || 0, 0, Math.max(0, list.length - 1)) : 0; if (live) LOCAL.mailScroll = off;
   let y = 122, shown = 0;
   for (const x of list.slice(off)) {
     if (y + 70 > H - 4) break;
     const P = MAILERS[x.s], [subj] = mailText(x), un = !rd[x.id], id = 'mail:open:' + x.id, hov = UI.hover && UI.hover.s === s && UI.hover.id === id;
-    s.regions.push({ id, x: 14, y, w: W - 44, h: 66 });
+    if (live) s.regions.push({ id, x: 14, y, w: W - 44, h: 66 });
     rr(g, 14, y, W - 44, 66, 8); g.fillStyle = hov ? '#1d2740' : un ? '#131d30' : '#0e1422'; g.fill();
     if (un) { g.fillStyle = C.sns; g.beginPath(); g.arc(30, y + 33, 6, 0, Math.PI * 2); g.fill(); }
     g.fillStyle = P.col; g.beginPath(); g.arc(62, y + 33, 18, 0, Math.PI * 2); g.fill();
@@ -3845,6 +3900,7 @@ function drawDeskInfo(g, s, ci) {
   s.live = mine; s.regions = [];
   g.fillStyle = '#0a0d17'; g.fillRect(0, 0, W, H);
   if (!powered(ci)) return;
+  if (infected(ci)) { s.regions = []; drawVirusScreen(g, W, H, ci); return; }
   const du = (state.deskUI || {})[ci] || {};
   const tab = mine ? LOCAL.itab : (du.itab || 'co');
   const unreadM = mine ? mailUnread() : 0;
@@ -3863,7 +3919,7 @@ function drawDeskInfo(g, s, ci) {
     if (art) drawArticle(g, s, art); else drawNewsList(g, 16, 76, W - 44, H - 80, 26, s, 6);
   }
   else if (tab === 'info') drawInfoTab(g, ci);
-  else if (tab === 'mail') drawMailTab(g, s, ci);
+  else if (tab === 'mail') drawMailTab(g, s, ci, mine ? myKey() : deskOwner(ci, du), mine ? LOCAL.mailOpen : du.mail);
   else drawAcctTab(g, s, ci, mine ? myKey() : deskOwner(ci, du));
 }
 /* ---- SNS：アカウントページとスクロール ---- */
@@ -4411,6 +4467,7 @@ function promptFor(t) {
   if (!t) return '';
   if (state.phase === 'boss') return t.kind === 'bossdoor' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> ノックする' : '';
   if (t.kind === 'bossdoor') return BQ.active && BQ.mode === 'praise' && state.bossDoor !== 'open' && !BQ.stage ? '<kbd>E</kbd> 社長室をノックする' : '';
+  if (t.kind === 'st' && infected(t.ci)) { const f = infected(t.ci); return `${stationLabel(t.ci)} ${esc(state.cos[t.ci].short)}：☠ ウイルス感染中（復旧まであと${f.until - postClock()}分）`; }
   if (t.kind === 'st') { const c = state.cos[t.ci]; const u = deskUser(t.ci); return u ? `${stationLabel(t.ci)} ${esc(c.short)}：${esc(nameOf(u.by || u.peer))}が使用中` : `<kbd>E</kbd>座る　${stationLabel(t.ci)} ${esc(c.short)}`; }
   if (t.kind === 'front') { const c = state.cos[t.ci]; return powered(t.ci) ? `${esc(c.short)}（${stationLabel(t.ci)}）　<kbd>Q</kbd> 指さし` : ''; }
   return { news: '<kbd>E</kbd>ニュース', all: '<kbd>E</kbd>#株クラ', cal: '<kbd>E</kbd>決算発表と取引時間', big: '<kbd>E</kbd>持ち株一覧' }[t.kind] || '';
@@ -4421,6 +4478,7 @@ function interact(t) {
   if (t.kind === 'bossdoor') { if (BQ.active && BQ.mode === 'praise' && state.bossDoor !== 'open' && !BQ.stage) { sfx('knock'); request('ctl', { a: 'knock' }); } return; }
   if (t.kind === 'st') {
     if (!powered(t.ci)) return;
+    { const f = infected(t.ci); if (f) { logLine(`${stationLabel(t.ci)}のPCはウイルスに感染中（復旧まであと${f.until - postClock()}分）`, 'bad'); sfx('err'); return; } }
     const u = deskUser(t.ci); if (u) { logLine(`${stationLabel(t.ci)}は${nameOf(u.by || u.peer)}が使用中`, 'bad'); sfx('err'); return; }
     sitDown(t.ci);
   }
@@ -4454,7 +4512,7 @@ function standUp(relock) {
 let deskSent = '';
 function pushDeskUI(force) {
   if (SEAT.ci < 0) return;
-  const u = { itab: LOCAL.itab, art: LOCAL.art != null ? LOCAL.art : null, prof: LOCAL.prof || null }, key = SEAT.ci + '|' + JSON.stringify(u);
+  const u = { itab: LOCAL.itab, art: LOCAL.art != null ? LOCAL.art : null, prof: LOCAL.prof || null, mail: LOCAL.itab === 'mail' && LOCAL.mailOpen != null ? LOCAL.mailOpen : null }, key = SEAT.ci + '|' + JSON.stringify(u);
   if (!force && key === deskSent) return; deskSent = key;
   request('ctl', { a: 'desk', ci: SEAT.ci, u });
 }
@@ -4496,7 +4554,7 @@ function deskAction(id) {
   else if (id.startsWith('mail:blk:')) { const sid = id.slice(9), mb = peekBox(myKey()), b = !!(mb.c[sid] && mb.c[sid].blk); request('ctl', { a: 'mailblk', s: sid, v: !b }); if (!b) LOCAL.mailOpen = null; renderCoFeed(); }
   else if (id === 'folshop') { LOCAL.folShop = !LOCAL.folShop; renderCoFeed(); }
   else if (id.startsWith('fol:')) buyFolLocal(+id.slice(4));
-  if (/^(tab:|news:|prof:)/.test(id)) pushDeskUI();
+  if (/^(tab:|news:|prof:|mail:)/.test(id)) pushDeskUI();
   sfx('chat');
 }
 function sendPost(ti) {
@@ -4635,6 +4693,16 @@ function perfTick(now) {
   const fe = $('#fps'); if (fe) { fe.textContent = `${Math.round(PERF.fps)} fps · ${GAME_VERSION}`; fe.className = 'fps' + (PERF.fps < 40 ? ' bad' : PERF.fps < 55 ? ' mid' : ''); }
 }
 let mailAcc = 0, mailSig = '';
+const VIRUS_SEC = 5;
+function virusLocal() {
+  if (SEAT.ci >= 0 && LOCAL.panel === 'desk' && infected(SEAT.ci)) { const ci = SEAT.ci; standUp(false); logLine(`${stationLabel(ci)}のPCがウイルスに感染して使えなくなった`, 'bad'); }
+  const v = LOCAL.vir; if (!v) return;
+  const mb = peekBox(myKey()), x = mb.box.find(y => y.id === v.id);
+  if (!x || x.inf) { LOCAL.vir = null; return; }
+  if (mb.c[x.s] && mb.c[x.s].blk) { LOCAL.vir = null; (LOCAL.virDone = LOCAL.virDone || {})[v.id] = 'safe'; logLine('危なかった……ウイルスメールをブロックした', 'good'); sfx('coin'); return; }
+  if (stations[v.ci]) stations[v.ci].info.dirty = true;
+  if ((performance.now() - v.t0) / 1000 >= VIRUS_SEC) { LOCAL.vir = null; (LOCAL.virDone = LOCAL.virDone || {})[v.id] = 'inf'; request('ctl', { a: 'virus', id: v.id, ci: v.ci }); }
+}
 function frame(now) {
   const dt = Math.min(.1, (now - last) / 1000); last = now; tAll += dt;
   perfTick(now);
@@ -4655,7 +4723,7 @@ function frame(now) {
   ambientTick();
   if (NET.role === 'host' && now - NET.lastFlush > 350) flush();
   const moved = movePlayer(dt); bob += moved * 7;
-  praiseCheck(); bossTick(dt);
+  praiseCheck(); bossTick(dt); virusLocal();
   presAcc += dt;
   const act = currentAct();
   if (isMulti() && NET.office && (presAcc > .1 || act !== lastAct)) {
@@ -4695,7 +4763,7 @@ function frame(now) {
   let cx = P.x, cy = EYE + (reduceMotion ? 0 : Math.sin(bob) * .03), cz = P.z, cyaw = P.yaw, cpitch = P.pitch;
   if (seated || seatBlend > .01) {
     const st = stations[seated ? SEAT.ci : LOCAL.sel] || stations[0];
-    const sx = st.x + .04, sy = 1.2, sz = st.z + .74, syaw = seatLook.yaw, sp = -.15 + seatLook.pitch;
+    const sx = st.x + .04, sy = 1.2, sz = st.z + .74, syaw = seatLook.yaw, sp = -.05 + seatLook.pitch;
     const b = seatBlend;
     cx += (sx - cx) * b; cy += (sy - cy) * b; cz += (sz - cz) * b;
     let dyaw = syaw - cyaw; dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw)); cyaw += dyaw * b; cpitch += (sp - cpitch) * b;
@@ -4786,7 +4854,7 @@ function showModal(kind) {
       <div class="mode"><h3>仲間のオフィスに参加</h3>
         ${roomOK ? `<ul class="offices" id="officeList"></ul><div class="joinrow"><input id="joinCode" placeholder="desk-xxxx" maxlength="9" autocomplete="off" aria-label="オフィス番号"><button class="btn" id="mJoin" type="button">番号で参加</button></div>` : `<p class="owned">${pending ? '接続を確認しています…' : '通信ライブラリを読み込めませんでした。ページを再読み込みしてください。'}</p>`}
       </div>
-      <p class="keys"><kbd>WASD</kbd> 移動／<kbd>E</kbd> 座る・立つ／座ったらモニターをクリック／<kbd>B</kbd> 買う <kbd>S</kbd> 売る／ホイール ズーム／<kbd>Q</kbd> 指さし／<kbd>Enter</kbd> チャット／<kbd>P</kbd> 停止</p>`;
+      <p class="keys"><kbd>WASD</kbd> 移動／<kbd>E</kbd> 座る・立つ／座ったらモニターをクリック／ホイール ズーム／<kbd>Q</kbd> 指さし／<kbd>Enter</kbd> チャット／<kbd>P</kbd> 停止</p>`;
     $('#pName').addEventListener('input', e => setPName(e.target.value, e.target));
     $('#mSolo').onclick = () => { audio(); startSolo(null); };
     if ($('#mLoad')) $('#mLoad').onclick = () => { audio(); startSolo(save); };
@@ -4991,9 +5059,7 @@ document.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (LOCAL.panel === 'desk') {
     if (k === 'e' || e.key === 'Escape') { standUp(k === 'e'); e.preventDefault(); return; }
-    if (k === 'b') { trade(1); e.preventDefault(); }
-    else if (k === 's') { trade(-1); e.preventDefault(); }
-    else if (e.key === 'ArrowUp') { setQty(LOCAL.qty + 100); e.preventDefault(); }
+    if (e.key === 'ArrowUp') { setQty(LOCAL.qty + 100); e.preventDefault(); }
     else if (e.key === 'ArrowDown') { setQty(LOCAL.qty - 100); e.preventDefault(); }
     else if (e.key === 'Tab') { LOCAL.itab = ITABS[(Math.max(0, ITABS.indexOf(LOCAL.itab)) + (e.shiftKey ? ITABS.length - 1 : 1)) % ITABS.length]; LOCAL.mailOpen = null; LOCAL.art = null; LOCAL.prof = null; renderCoFeed(); pushDeskUI(); e.preventDefault(); }
     else if (k === 'n') { openNewsItem(LAST_NEWS); e.preventDefault(); }
