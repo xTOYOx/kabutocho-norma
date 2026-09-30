@@ -316,6 +316,11 @@ body.bosscut #lockHint,body.bosscut #cross,body.bosscut #prompt,body.bosscut .fp
 .cal{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .cal li{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;background:var(--line-2);font-size:13px}
 .cal.sched li{border-left:4px solid transparent}
+.histchart{margin:10px 0 6px}
+.histchart canvas{width:100%;height:auto;display:block;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px}
+.hclegend{display:flex;gap:16px;justify-content:flex-end;font-size:11.5px;color:var(--muted);margin-top:4px}
+.hclegend .la::before{content:'';display:inline-block;width:14px;height:3px;background:var(--amber);margin-right:6px;vertical-align:middle}
+.hclegend .lq::before{content:'';display:inline-block;width:14px;height:0;border-top:2px dashed var(--up);margin-right:6px;vertical-align:middle}
 .sessbar{display:grid;grid-template-columns:5fr 2fr 6fr;gap:6px;margin-bottom:6px}
 .sessbar .ss{border-radius:8px;padding:8px 10px;background:#1b2a44;display:flex;flex-direction:column;gap:2px}
 .sessbar .ss b{font-size:14px} .sessbar .ss span{font-family:var(--f-num);font-size:12px;color:var(--muted)}
@@ -2153,7 +2158,7 @@ function endDay() {
   charge = Math.round(charge); state.cash -= charge;
   const a = assets(), pass = a >= state.quota, mid = !isDeadline(state.day);
   state.stats.history.push({ day: state.day, assets: a, quota: state.quota, pass: mid ? null : pass });
-  if (state.stats.history.length > 30) state.stats.history.shift();
+  if (state.stats.history.length > 400) state.stats.history.shift();
   state.report = { day: state.day, assets: a, cash: state.cash, stock: stockValue(), quota: state.quota, pass, mid, deadline: deadlineOf(state.day), term: termOf(state.day), pnl: a - state.stats.dayStart, trades: state.stats.dayTrades, fees: state.stats.dayFees, charge, afterClose: state.afterClose.slice(0, 3), carry: posCount() };
   state.overnight = makeOvernight();
   fx({ t: 'sfx', k: 'bell' });
@@ -2795,7 +2800,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v33 P2P';
+const GAME_VERSION = 'v35 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* ---- 部屋 ---- */
 (function buildRoom() {
@@ -3140,11 +3145,58 @@ function praiseCheck() {
   if (want && !BQ.active) enterPraiseMode();
   else if (!want && BQ.active && BQ.mode === 'praise' && !BQ.stage) exitBossMode();
 }
+/* ---- 総資産の推移グラフ（ゲームオーバー・エンディング） ---- */
+function yenShort(v) { const a = Math.abs(v), s = v < 0 ? '-' : ''; return a >= 1e8 ? `${s}${(a / 1e8).toFixed(a >= 1e9 ? 0 : 1)}億` : `${s}${Math.round(a / 1e4)}万`; }
+function histChartHTML() { return `<div class="histchart"><p class="h3">総資産の推移</p><canvas id="histCv" width="1320" height="440" aria-label="総資産の推移グラフ"></canvas><div class="hclegend"><span class="la">総資産</span><span class="lq">ノルマ</span></div></div>`; }
+function drawHistChart(withNow) {
+  const cv = $('#histCv'); if (!cv) return;
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const hist = state.stats.history || [];
+  const pts = [{ d: 0, a: START_CASH, q: null }].concat(hist.map(h => ({ d: h.day, a: h.assets, q: h.quota, pass: h.pass })));
+  if (withNow && (!hist.length || hist[hist.length - 1].day !== state.day)) pts.push({ d: state.day, a: assets(), q: state.quota, now: true });
+  const L = 110, R = 30, T = 24, B = 56, cw = W - L - R, ch = H - T - B;
+  let lo = Infinity, hi = -Infinity; for (const p of pts) { lo = Math.min(lo, p.a, p.q == null ? Infinity : p.q); hi = Math.max(hi, p.a, p.q == null ? -Infinity : p.q); }
+  const pad = (hi - lo) * .12 || hi * .1; lo = Math.max(0, lo - pad); hi += pad;
+  const n = pts.length, X = i => L + (n <= 1 ? cw / 2 : i / (n - 1) * cw), Y = v => T + (hi - v) / (hi - lo) * ch;
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches, dur = reduce ? 0 : 1800, t0 = performance.now();
+  const frame = now => {
+    if (!cv.isConnected) return;
+    const k = dur ? clamp((now - t0) / dur, 0, 1) : 1, e = 1 - Math.pow(1 - k, 3), upto = e * (n - 1);
+    g.clearRect(0, 0, W, H);
+    /* 目盛り */
+    g.font = `600 22px ${F_NUM}`; g.textAlign = 'right'; g.textBaseline = 'middle';
+    for (let j = 0; j <= 4; j++) { const v = lo + (hi - lo) * j / 4, y = Y(v); g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 2; g.beginPath(); g.moveTo(L, y); g.lineTo(W - R, y); g.stroke(); g.fillStyle = '#7f8aa3'; g.fillText(yenShort(v), L - 12, y); }
+    g.textAlign = 'center'; g.textBaseline = 'top';
+    const step = Math.max(1, Math.ceil(n / 12));
+    pts.forEach((p, i) => { if (i % step === 0 || i === n - 1) { g.fillStyle = '#7f8aa3'; g.fillText(p.d === 0 ? '開始' : p.now ? '今' : `D${p.d}`, X(i), H - B + 14); } });
+    /* ノルマ（期ごとの階段） */
+    g.strokeStyle = 'rgba(255,84,104,.8)'; g.setLineDash([10, 8]); g.lineWidth = 3; g.beginPath(); let st = false;
+    pts.forEach((p, i) => { if (p.q == null) return; const x0 = X(Math.max(0, i - 1)), x1 = X(i), y = Y(p.q); if (!st) { g.moveTo(x0, y); st = true; } else g.lineTo(x0, y); g.lineTo(x1, y); });
+    g.stroke(); g.setLineDash([]);
+    /* 総資産（伸びていく線と塗り） */
+    const full = Math.floor(upto), frac = upto - full;
+    const path = []; for (let i = 0; i <= full; i++) path.push([X(i), Y(pts[i].a)]);
+    if (full < n - 1) { const a = pts[full].a + (pts[full + 1].a - pts[full].a) * frac; path.push([X(full) + (X(full + 1) - X(full)) * frac, Y(a)]); }
+    if (path.length) {
+      const grd = g.createLinearGradient(0, T, 0, H - B); grd.addColorStop(0, 'rgba(242,169,59,.35)'); grd.addColorStop(1, 'rgba(242,169,59,0)');
+      g.beginPath(); g.moveTo(path[0][0], H - B); path.forEach(([x, y]) => g.lineTo(x, y)); g.lineTo(path[path.length - 1][0], H - B); g.closePath(); g.fillStyle = grd; g.fill();
+      g.beginPath(); path.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.strokeStyle = '#f2a93b'; g.lineWidth = 5; g.lineJoin = 'round'; g.stroke();
+      for (let i = 0; i <= full; i++) { const p = pts[i]; g.fillStyle = p.pass === false ? '#ff5468' : p.pass === true ? '#46c98e' : '#f2a93b'; g.beginPath(); g.arc(X(i), Y(p.a), p.pass != null ? 9 : 6, 0, Math.PI * 2); g.fill(); }
+      const [hx, hy] = path[path.length - 1], cur = full < n - 1 ? pts[full].a + (pts[full + 1].a - pts[full].a) * frac : pts[n - 1].a;
+      g.fillStyle = '#fff'; g.beginPath(); g.arc(hx, hy, 8, 0, Math.PI * 2); g.fill();
+      g.font = `800 28px ${F_NUM}`; g.textBaseline = 'bottom'; g.textAlign = hx > W - 220 ? 'right' : 'left'; g.fillStyle = '#fff'; g.fillText(yen(Math.round(cur)), hx + (hx > W - 220 ? -14 : 14), hy - 10);
+    }
+    g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    if (k < 1) requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+}
 function endingHTML() {
   const f = peekCred(myKey()).fol, days = state.day, x = assets() / START_CASH;
   return `<div class="eyebrow">社長室</div><div class="verdict pass">世界一の企業</div>
     <p class="lead">カブトデスク証券は、ついに世界一の企業になった。${isMulti() ? '社長はチーム全員の名前を呼んで、何度も頭を下げた。' : '社長は何度も「よくやった」と繰り返した。'}</p>
     <div class="kv"><div><span>営業日</span><span>${days}日（第${termOf(days)}期）</span></div><div><span>総資産</span><span>${yen(assets())}</span></div><div><span>元手の</span><span>${x.toFixed(1)}倍</span></div><div><span>最高総資産</span><span>${yen(state.stats.best)}</span></div><div><span>約定回数</span><span>${fmt(state.stats.totalTrades || 0)}回</span></div><div><span>フォロワー</span><span>${fmt(f)}</span></div></div>
+    ${histChartHTML()}
     <p class="owned">ここから先もそのまま遊び続けられます（ノルマは続きます）。</p>
     <div class="btns"><button class="btn primary" id="mEndCont" type="button">続けて遊ぶ</button><button class="btn" id="mTitle" type="button">タイトルへ</button></div>`;
 }
@@ -3868,6 +3920,7 @@ function drawMailTab(g, s, ci, owner, openId) {
   const unread = list.filter(x => !rd[x.id]).length;
   g.fillStyle = C.fg; g.font = `900 26px ${F_JP}`; g.fillText('受信箱', 24, 106);
   g.fillStyle = unread ? C.up : C.muted; g.font = `700 19px ${F_JP}`; g.fillText(unread ? `未読 ${unread}` : '未読なし', 130, 105);
+  if (live && unread) uiBtn(g, s, 'mail:readall', 232, 80, 176, 36, '✓ すべて既読', { font: `700 18px ${F_JP}`, r: 18, bg: '#1d4f96' });
   const blocked = MAIL_IDS.filter(x => mb.c[x] && mb.c[x].blk).length;
   g.fillStyle = C.muted; g.font = `600 17px ${F_NUM}`; g.textAlign = 'right'; g.fillText(`${addrOf(key)}${blocked ? `　ブロック中 ${blocked}` : ''}`, W - 24, 105, 420); g.textAlign = 'left';
   if (!list.length) { g.fillStyle = C.muted; g.font = `500 22px ${F_JP}`; g.fillText('メールはまだありません', 24, 170); return; }
@@ -4549,6 +4602,7 @@ function deskAction(id) {
   else if (id.startsWith('dir:')) { LOCAL.pdir = +id.slice(4); renderCoFeed(); }
   else if (id.startsWith('tpl:')) sendPost(+id.slice(4));
   else if (id === 'mail:back') { LOCAL.mailOpen = null; renderCoFeed(); }
+  else if (id === 'mail:readall') { const rd = LOCAL.mailRead = LOCAL.mailRead || {}; for (const x of peekBox(myKey()).box) rd[x.id] = 1; const nb = $('#notifs'); if (nb) nb.querySelectorAll('.ncard.mail').forEach(el => el.remove()); renderCoFeed(); }
   else if (id.startsWith('mail:open:')) { LOCAL.mailOpen = +id.slice(10); (LOCAL.mailRead = LOCAL.mailRead || {})[LOCAL.mailOpen] = 1; renderCoFeed(); }
   else if (id.startsWith('mail:ans:')) { const [, , mid, o] = id.split(':'); request('ctl', { a: 'mailans', id: +mid, o: +o }); }
   else if (id.startsWith('mail:blk:')) { const sid = id.slice(9), mb = peekBox(myKey()), b = !!(mb.c[sid] && mb.c[sid].blk); request('ctl', { a: 'mailblk', s: sid, v: !b }); if (!b) LOCAL.mailOpen = null; renderCoFeed(); }
@@ -4945,15 +4999,17 @@ function showModal(kind) {
       <div class="btns"><button class="btn primary" id="mCont" type="button">続けて稼ぐ（購買部へ）</button></div>`;
     $('#mCont').onclick = () => request('ctl', { a: 'shop' });
   } else if (kind === 'ending') {
-    md.innerHTML = endingHTML();
+    md.innerHTML = endingHTML(); drawHistChart(true);
     $('#mEndCont').onclick = () => { closeModal(); $('#blackout').hidden = true; exitBossMode(); if (!isMulti()) { state.paused = false; syncCtlUI(); } };
     $('#mTitle').onclick = () => leaveOffice();
   } else if (kind === 'over') {
     const rows = state.stats.history.map(h => `<tr><td>${h.day}</td><td>${yen(h.assets)}</td><td>${yen(h.quota)}</td><td class="${h.pass == null ? '' : h.pass ? 'up' : 'down'}">${h.pass == null ? '途中' : h.pass ? '達成' : '未達'}</td></tr>`).join('');
     md.innerHTML = `<div class="eyebrow">社長室</div><div class="verdict fail">${isMulti() ? '全員クビ' : 'クビ'}</div>
       <p class="lead">${esc(state.overReason || '')} 生き残ったのは ${state.stats.history.filter(h => h.pass !== false).length} 営業日（突破した期 ${state.stats.history.filter(h => h.pass === true).length}）。最高総資産は ${yen(state.stats.best)}。</p>
+      ${histChartHTML()}
       ${rows ? `<div style="overflow-x:auto"><table class="hist"><thead><tr><th>DAY</th><th>総資産</th><th>ノルマ</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
       <div class="btns"><button class="btn primary" id="mRetry" type="button">${isMulti() ? '同じメンバーでもう一度' : 'もう一度'}</button><button class="btn" id="mTitle" type="button">タイトルへ</button></div>`;
+    drawHistChart(false);
     $('#mRetry').onclick = () => request('ctl', { a: 'restart' });
     $('#mTitle').onclick = () => leaveOffice();
   }
