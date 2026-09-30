@@ -242,6 +242,16 @@ kbd{font-family:var(--f-num);font-size:10px;letter-spacing:0;border:1px solid cu
 .namerow label{font-size:12.5px;color:var(--muted);font-weight:700}
 .namerow input{flex:1 1 180px;max-width:280px;min-width:0;background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 12px;color:var(--fg);font:inherit;font-weight:700}
 .namerow input:focus{border-color:var(--amber);outline:none}
+.acctlink{background:none;border:0;padding:0;font:inherit;font-weight:700;font-size:12px;color:var(--fg);cursor:pointer}
+.acctlink:hover{text-decoration:underline;color:#9fd0ff}
+.profhead{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.profhead .av{flex:0 0 44px;height:44px;font-size:18px;border-radius:50%;display:grid;place-items:center;font-weight:900}
+.pinfo{display:flex;flex-direction:column;min-width:0;flex:1}
+.pinfo b{font-size:16px}
+.pfol{display:flex;flex-direction:column;align-items:flex-end}
+.pfol b{font-size:20px}
+.pfol small{color:var(--muted);font-size:11px}
+.pback{background:var(--raise);border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:13px}
 .fold{font-family:var(--f-num);font-size:13px;font-weight:700;opacity:0}
 .fold.up{color:var(--ok)} .fold.down{color:var(--up)}
 .fold.show{animation:folpop 2.2s ease-out forwards}
@@ -495,6 +505,7 @@ body.seated .tl{width:250px}
     <div class="pbody">
       <section id="pNews" hidden><ol class="list" id="fNews"></ol></section>
       <section id="pSns" hidden><ol class="list" id="fSns"></ol></section>
+      <section id="pProf" hidden><div class="profhead" id="profHead"></div><ol class="list" id="fProf"></ol></section>
       <section id="pCal" hidden><div class="pane-pad" id="fCal"></div></section>
       <section id="pPos" hidden><div class="pane-pad" id="fPos"></div></section>
       <section id="pTeam" hidden><div class="pane-pad">
@@ -891,7 +902,7 @@ const UPGRADES = [
 const STAMPS = ['買い！', '売れ！', '待って', 'ナイス！', 'デマかも', 'ヤバい'];
 const SEAT_COLORS = ['#f2a93b', '#4fd1c5', '#c084fc', '#7dd3fc'];
 const GOAL_DAYS = 10, START_CASH = 3000000, SAVE_KEY = 'kabutocho-norma-save-v6';
-const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred'];
+const LKEYS = ['day', 'phase', 'speed', 'paused', 'cash', 'pos', 'quota', 'up', 'calendar', 'acct', 'stats', 'report', 'cleared', 'idxPrev', 'overReason', 'ready', 'players', 'contrib', 'mode', 'watch', 'cred', 'deskUI'];
 
 /* =========================================================
    状態
@@ -1063,6 +1074,13 @@ function ctl(d, key, isLocal) {
   else if (a === 'grace') { if (state.phase === 'report' && r && !r.pass && state.up.grace > 0) { state.up.grace = 0; fx({ t: 'boss', text: '社長「猶予券は受け取った。次はないぞ」' }); state.ready = {}; setPhase('shop'); } }
   else if (a === 'over') { if (state.phase === 'report' && r && !r.pass) gameOver(`DAY ${r.day} のノルマに ${yen(r.quota - r.assets)} 届かなかった。`); }
   else if (a === 'restart') { if (state.phase === 'over') restartGame(); }
+  else if (a === 'desk') {
+    const ci = d.ci | 0; if (ci < 0 || ci >= state.cos.length) return;
+    const u = d.u && typeof d.u === 'object' ? d.u : {};
+    state.deskUI = state.deskUI || {};
+    state.deskUI[ci] = { itab: ['co', 'news', 'info', 'acct'].includes(u.itab) ? u.itab : 'co', art: typeof u.art === 'number' ? u.art : null, prof: typeof u.prof === 'string' ? u.prof.slice(0, 80) : null, who: String(key).slice(0, 80) };
+    markInfo(ci);
+  }
   else if (a === 'force') { if (isLocal && state.phase === 'shop') nextDay(); }
 }
 function checkReady() {
@@ -1104,6 +1122,7 @@ function applyLedger(L) {
   if (JSON.stringify(state.pos) !== prevPos) { markAllDirty(); posDirty = true; }
   if (JSON.stringify(state.players) !== prevPlayers) { refreshNames(); layoutSeats(); renderTeam(); }
   if (JSON.stringify(state.up) !== prevUp) { markAllDirty(); if ('up' in L && state.up.analyst) rebuildFeed(); }
+  if ('deskUI' in L) for (const st of stations) st.info.dirty = true;
   hudDirty = true; boardDirty = true; syncCtlUI();
   if (state.phase !== prevPhase) renderPhase(prevPhase); else refreshModal();
 }
@@ -1142,7 +1161,7 @@ function afterStateReplaced() {
 function snapState() {
   const s = JSON.parse(JSON.stringify(state));
   s.events = []; s.items = []; s.itemPtr = 0; s.rumors = [];
-  s.feed = s.feed.filter(x => !x.amb).slice(-150);
+  { const lim = { news: 40, sep: 10, all: 100 }, cnt = {}, keep = []; for (let i = s.feed.length - 1; i >= 0; i--) { const x = s.feed[i], k = x.k === 'sns' ? (x.ch === 'all' ? 'all' : 'c' + x.ch) : x.k; cnt[k] = (cnt[k] || 0) + 1; if (cnt[k] <= (lim[k] || 25)) keep.push(x); } s.feed = keep.reverse(); }
   for (const c of s.cos) { c.hist = c.hist.slice(-36); c.intraV = []; c.impacts = []; }
   return s;
 }
@@ -1633,9 +1652,15 @@ function addFeed(item) {
   if (item.k === 'sns' && !ACC[item.acct] && item.acct !== 'player') return;
   if (item.k === 'sns' && item.ch == null) item.ch = 'all';
   state.feed.push(item);
-  const cap = item.k === 'news' ? 40 : item.k === 'sep' ? 10 : item.ch === 'all' ? 70 : 30;
+  if (item.k === 'sns') {
+    const ak = acctKeyOf(item);
+    if (typeof item.ch === 'number' && item.ch === SEAT.ci && LOCAL.coScroll > 0 && !LOCAL.prof) LOCAL.coScroll++;
+    if (LOCAL.prof && ak === LOCAL.prof) { if (LOCAL.profScroll > 0) LOCAL.profScroll++; renderCoFeed(); }
+    if (LOCAL.panel === 'prof' && ak === LOCAL.profKey) renderProfileDOM();
+  } else if (item.k === 'news' && LOCAL.newsScroll > 0) LOCAL.newsScroll++;
+  const cap = item.k === 'news' ? 40 : item.k === 'sep' ? 10 : item.ch === 'all' ? 150 : 60;
   for (let i = state.feed.length - 1, n = 0; i >= 0; i--) { const x = state.feed[i]; if (x.k === item.k && (item.k !== 'sns' || x.ch === item.ch)) { n++; if (n > cap) state.feed.splice(i, 1); } }
-  if (NET.role === 'host' && !item.amb) NET.out.push(['f', item]);
+  if (NET.role === 'host') NET.out.push(['f', item]);
   if (item.k !== 'sns' || item.ch === 'all') renderFeedItem(item, true);
   if (item.k === 'news') { newsDirty = true; queueCrowd(item); if (state.phase !== 'title') logLine(item.tag === '先行' ? '［先行］ニュース' : item.tag === '夜間' ? '［夜間］ニュース' : '［速報］ニュース', 'news'); for (const code of item.codes || []) { const c = co(code); if (c) c.flash = Math.max(c.flash, 3.5); } sfx(item.tag === '先行' ? 'pre' : 'news'); }
   else if (item.k === 'sns') {
@@ -1661,10 +1686,10 @@ function feedHTML(item) {
   if (item.acct === 'player') {
     const p = playerByKey(item.who), col = item.who === 'me' ? SEAT_COLORS[0] : p && p.seat >= 0 ? SEAT_COLORS[p.seat] : '#f2a93b';
     const nm = nameOf(item.who);
-    return `<li class="it sns mine-post"><div class="av" style="background:${col};color:#0b0f17" aria-hidden="true">${esc(nm[0] || '社')}</div><div class="body"><div class="meta"><b>${esc(nm)}</b>${folHtml}<time>${esc(item.tl)}</time></div><p>${body}</p></div></li>`;
+    return `<li class="it sns mine-post"><div class="av" style="background:${col};color:#0b0f17" aria-hidden="true">${esc(nm[0] || '社')}</div><div class="body"><div class="meta"><button type="button" class="acctlink" data-acct="${esc('p:' + item.who)}">${esc(nm)}</button>${folHtml}<time>${esc(item.tl)}</time></div><p>${body}</p></div></li>`;
   }
   const a = ACC[item.acct];
-  return `<li class="it sns"><div class="av" style="--h:${a.hue}" aria-hidden="true">${esc(a.name[0])}</div><div class="body"><div class="meta"><b>${esc(a.name)}</b>${folHtml}<time>${esc(item.tl)}</time></div><p>${body}</p></div></li>`;
+  return `<li class="it sns"><div class="av" style="--h:${a.hue}" aria-hidden="true">${esc(a.name[0])}</div><div class="body"><div class="meta"><button type="button" class="acctlink" data-acct="${esc(item.acct)}">${esc(a.name)}</button>${folHtml}<time>${esc(item.tl)}</time></div><p>${body}</p></div></li>`;
 }
 function renderFeedItem(item, fresh) {
   const html = feedHTML(item);
@@ -2063,6 +2088,7 @@ const CO_NEU = [() => '静かだな', () => '様子見', () => '板が薄い', (
 const ALL_AMB = ['TKX重いな', '今日は全体的に強い', '今日は全体的に弱い', '昼休み何食べよう', '指値が刺さらない', 'デイトレ疲れた', '新NISAで何買う？', '米国先物見てる', '為替どうなる', '寄り天こわい', '今日はノートレ', 'ストップ高銘柄ないかな', 'ニュース見逃した', '握力が試される日', '引けまであと少し', '決算シーズンは胃が痛い', '材料株追いかけるの疲れた', '今日の主役はどこだ'];
 let ambMinute = -1;
 function ambientTick() {
+  if (!runsSim()) { ambMinute = state.minute; return; }
   if (state.phase !== 'market' || state.paused) { ambMinute = state.minute; return; }
   if (ambMinute < 0 || state.minute < ambMinute) ambMinute = state.minute;
   let guard = 0;
@@ -2101,6 +2127,7 @@ const CROWD = {
 };
 const REACTQ = [];
 function queueCrowd(item) {
+  if (!runsSim()) return;
   if (state.phase !== 'market' || item.tag === '先行') return;
   const m = state.minute, c = item.codes && item.codes.length ? co(item.codes[0]) : null, s = item.s || 0;
   const push = (ch, text, d) => REACTQ.push({ m: m + d, ch, text });
@@ -2489,25 +2516,134 @@ for (let ci = 0; ci < 12; ci++) {
 function updateStations() { for (const s of stations) { const on = s.ci < 8 || powered(s.ci); s.grp.visible = on; s.col.off = !on; } }
 
 /* ---- 同僚アバター ---- */
+/* ---- 同僚アバター：丸っこいカジュアルなトレーダー（ヘッドセット付き） ---- */
 const avatars = new Map();
+const AVG = {
+  sph: new THREE.SphereGeometry(1, 20, 14),
+  cyl: new THREE.CylinderGeometry(1, 1, 1, 18),
+  cap: (() => { const g = new THREE.CylinderGeometry(1, 1, 1, 18, 1, true); return g; })(),
+  torus: new THREE.TorusGeometry(.2, .022, 8, 24, Math.PI),
+};
+const AVM = {
+  skin: new THREE.MeshStandardMaterial({ color: '#f3d2b3', roughness: .7 }),
+  dark: new THREE.MeshStandardMaterial({ color: '#232838', roughness: .75 }),
+  shoe: new THREE.MeshStandardMaterial({ color: '#15171d', roughness: .5 }),
+  white: new THREE.MeshStandardMaterial({ color: '#f4f6fa', roughness: .6 }),
+  eye: new THREE.MeshBasicMaterial({ color: '#15171d' }),
+  hi: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+  cheek: new THREE.MeshBasicMaterial({ color: '#ff8fa3', transparent: true, opacity: .55, depthWrite: false }),
+  metal: new THREE.MeshStandardMaterial({ color: '#2b2f3a', metalness: .5, roughness: .35 }),
+};
+const shadowTex = (() => { const { ctx, tex } = canvasTex(64, 64); const g = ctx.createRadialGradient(32, 32, 2, 32, 32, 32); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64); tex.needsUpdate = true; return tex; })();
+function mk(geo, mat, sx, sy, sz) { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy == null ? sx : sy, sz == null ? sx : sz); return m; }
+/* カプセル（円柱＋両端の半球） */
+function capsule(r, len, mat) {
+  const g = new THREE.Group();
+  const body = mk(AVG.cyl, mat, r, len, r); g.add(body);
+  const a = mk(AVG.sph, mat, r); a.position.y = len / 2; g.add(a);
+  const b = mk(AVG.sph, mat, r); b.position.y = -len / 2; g.add(b);
+  return g;
+}
 function makeAvatar(col) {
   const grp = new THREE.Group(); scene.add(grp);
-  const suit = new THREE.MeshStandardMaterial({ color: col, roughness: .6 });
-  const dark = new THREE.MeshStandardMaterial({ color: '#1d2230', roughness: .7 });
-  const skin = new THREE.MeshStandardMaterial({ color: '#eef0f4', roughness: .7 });
-  const upper = new THREE.Group(); grp.add(upper);
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(.22, .25, .8, 18), suit); body.position.y = 1.05; upper.add(body);
-  const shoulder = new THREE.Mesh(new THREE.SphereGeometry(.22, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), suit); shoulder.position.y = 1.45; upper.add(shoulder);
-  const tie = new THREE.Mesh(new THREE.BoxGeometry(.07, .34, .02), new THREE.MeshStandardMaterial({ color: '#f4f6fa' })); tie.position.set(0, 1.18, -.24); upper.add(tie);
-  const head = new THREE.Group(); head.position.y = 1.72; upper.add(head);
-  head.add(new THREE.Mesh(new THREE.SphereGeometry(.2, 20, 16), skin));
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(.26, .08, .06), new THREE.MeshBasicMaterial({ color: '#0b0f17' })); visor.position.set(0, .02, -.18); head.add(visor);
-  const legs = [-1, 1].map(s => { const l = new THREE.Mesh(new THREE.BoxGeometry(.14, .66, .16), dark); l.geometry.translate(0, -.33, 0); l.position.set(s * .1, .66, 0); grp.add(l); return l; });
+  const suit = new THREE.MeshStandardMaterial({ color: col, roughness: .55 });
+  const suitDk = new THREE.MeshStandardMaterial({ color: new THREE.Color(col).multiplyScalar(.55), roughness: .6 });
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(.9, .9), new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = .012; grp.add(shadow);
+  const upper = new THREE.Group(); grp.add(upper);   // 腰から上（座ると持ち上がる）
+  /* 脚：腰を支点に回す */
+  const legs = [-1, 1].map(s => {
+    const hip = new THREE.Group(); hip.position.set(s * .1, .46, 0); upper.add(hip);
+    const leg = capsule(.085, .22, AVM.dark); leg.position.y = -.2; hip.add(leg);
+    const shoe = mk(AVG.sph, AVM.shoe, .1, .075, .14); shoe.position.set(0, -.39, -.04); hip.add(shoe);
+    return hip;
+  });
+  /* 胴体：丸いジャケット＋シャツとネクタイ */
+  const torso = new THREE.Group(); torso.position.y = .5; upper.add(torso);
+  const body = capsule(.25, .26, suit); body.position.y = .27; torso.add(body);
+  const shirt = mk(AVG.sph, AVM.white, .085, .075, .04); shirt.position.set(0, .5, -.215); torso.add(shirt);
+  const tie = mk(AVG.cyl, AVM.dark, .026, .16, .012); tie.position.set(0, .42, -.245); tie.rotation.x = -.18; torso.add(tie);
+  /* 腕：肩を支点に振る */
+  const arms = [-1, 1].map(s => {
+    const sh = new THREE.Group(); sh.position.set(s * .27, .5, 0); torso.add(sh);
+    const arm = capsule(.065, .2, suit); arm.position.y = -.15; arm.rotation.z = s * .12; sh.add(arm);
+    const hand = mk(AVG.sph, AVM.skin, .075); hand.position.set(s * .035, -.32, 0); sh.add(hand);
+    return sh;
+  });
+  /* 頭：大きめの丸顔、目・ほっぺ・口、ヘッドセット */
+  const head = new THREE.Group(); head.position.y = .84; torso.add(head);
+  head.add(mk(AVG.sph, AVM.skin, .25, .24, .24));
+  const hair = mk(AVG.sph, suitDk, .262, .2, .255); hair.position.set(0, .07, .025); head.add(hair);
+  const eyes = [-1, 1].map(s => {
+    const e = new THREE.Group(); e.position.set(s * .085, .01, -.215); head.add(e);
+    e.add(mk(AVG.sph, AVM.eye, .042, .058, .025));
+    const h = mk(AVG.sph, AVM.hi, .014); h.position.set(.012, .02, -.02); e.add(h);
+    return e;
+  });
+  [-1, 1].forEach(s => { const c = mk(AVG.sph, AVM.cheek, .04, .025, .01); c.position.set(s * .15, -.055, -.2); head.add(c); });
+  const mouth = new THREE.Mesh(AVG.torus, AVM.eye); mouth.scale.set(.18, .18, .5); mouth.rotation.z = Math.PI; mouth.position.set(0, -.07, -.228); head.add(mouth);
+  const band = new THREE.Mesh(new THREE.TorusGeometry(.265, .018, 8, 28, Math.PI), AVM.metal); band.rotation.y = Math.PI / 2; band.position.y = .01; head.add(band);
+  [-1, 1].forEach(s => { const cup = mk(AVG.cyl, AVM.metal, .075, .05, .075); cup.rotation.z = Math.PI / 2; cup.position.set(s * .255, -.01, 0); head.add(cup); const pad = mk(AVG.cyl, suit, .06, .052, .06); pad.rotation.z = Math.PI / 2; pad.position.set(s * .262, -.01, 0); head.add(pad); });
+  const mic = mk(AVG.cyl, AVM.metal, .008, .2, .008); mic.rotation.set(0, 0, Math.PI / 2.4); mic.position.set(-.2, -.1, -.1); mic.rotation.y = -.7; head.add(mic);
+  const micTip = mk(AVG.sph, AVM.dark, .025); micTip.position.set(-.12, -.14, -.19); head.add(micTip);
+  /* 名札と吹き出し */
   const label = canvasTex(320, 112);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: label.tex, transparent: true, depthTest: false })); sprite.scale.set(1.1, .385, 1); sprite.position.y = 2.2; grp.add(sprite);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: label.tex, transparent: true, depthTest: false })); sprite.scale.set(1.1, .385, 1); sprite.position.y = 2.0; grp.add(sprite);
   const bub = canvasTex(360, 100);
-  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bub.tex, transparent: true, depthTest: false })); bubble.scale.set(1.1, .305, 1); bubble.position.y = 2.55; bubble.visible = false; grp.add(bubble);
-  return { grp, upper, head, legs, label, sprite, bub, bubble, col, key: '', x: 0, z: 0, yaw: 0, pitch: 0, phase: 0, bubT: 0, init: false, sit: 0 };
+  const bubble = new THREE.Sprite(new THREE.SpriteMaterial({ map: bub.tex, transparent: true, depthTest: false })); bubble.scale.set(1.1, .305, 1); bubble.position.y = 2.35; bubble.visible = false; grp.add(bubble);
+  return { grp, upper, torso, head, legs, arms, eyes, shadow, label, sprite, bub, bubble, col, key: '', x: 0, z: 0, yaw: 0, pitch: 0, phase: 0, bubT: 0, init: false, sit: 0, blink: rand(1, 4), wave: 0, t: rand(0, 10) };
+}
+function updateAvatars(dt, k) {
+  const seen = new Set();
+  if (isMulti() && NET.office) {
+    for (const p of NET.office.peers()) {
+      if (p.sameTab || p.kind !== 'viewer') continue;
+      const pr = p.presence || {}; if (typeof pr.x !== 'number' || typeof pr.z !== 'number') continue;
+      seen.add(p.peer);
+      let av = avatars.get(p.peer);
+      const pl = (state.players || []).find(x => x.peer === p.peer);
+      const col = pl && pl.seat >= 0 ? SEAT_COLORS[pl.seat] : '#9aa4b8';
+      if (!av || av.col !== col) { if (av) scene.remove(av.grp); av = makeAvatar(col); avatars.set(p.peer, av); }
+      const sitCi = typeof pr.act === 'string' && pr.act.startsWith('st:') ? +pr.act.slice(3) : -1;
+      const st = stations[sitCi];
+      const tx = st ? st.x : clamp(pr.x, ROOM.x0, ROOM.x1), tz = st ? st.z + .62 : clamp(pr.z, ROOM.z0, ROOM.z1);
+      if (!av.init) { av.x = tx; av.z = tz; av.init = true; }
+      const dx = tx - av.x, dz = tz - av.z, dist = Math.hypot(dx, dz);
+      av.x += dx * Math.min(1, dt * 10); av.z += dz * Math.min(1, dt * 10);
+      const ty = st ? 0 : typeof pr.yaw === 'number' ? pr.yaw : 0, tp = typeof pr.pitch === 'number' ? clamp(pr.pitch, -1.2, 1.2) : 0;
+      let dy = ty - av.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); av.yaw += dy * k; av.pitch += (tp - av.pitch) * k;
+      av.sit += ((st ? 1 : 0) - av.sit) * Math.min(1, dt * 8);
+      av.t += dt;
+      const moving = dist > .015 && av.sit < .5, speed = Math.min(1, dist / (dt * 4.6 + 1e-6));
+      av.phase += moving ? dt * (8 + speed * 5) : 0;
+      const sw = moving ? Math.sin(av.phase) : 0, s = av.sit;
+      av.grp.position.set(av.x, 0, av.z); av.grp.rotation.y = av.yaw;
+      /* 体：歩くと弾む・左右に揺れる、止まると呼吸 */
+      av.upper.position.y = .11 * s + (moving ? Math.abs(Math.sin(av.phase)) * .045 : 0);
+      av.torso.rotation.z = moving ? Math.sin(av.phase) * .07 : 0;
+      av.torso.rotation.x = -(s * .08 + (moving ? .06 : 0));
+      av.torso.scale.y = 1 + (moving ? 0 : Math.sin(av.t * 2.2) * .012);
+      av.head.rotation.x = av.pitch * .6 - s * .1;
+      av.head.rotation.z = moving ? -Math.sin(av.phase) * .05 : Math.sin(av.t * .7) * .03;
+      /* 脚：歩行の振り、座ると前に */
+      av.legs[0].rotation.x = sw * .65 * (1 - s) + 1.5 * s; av.legs[1].rotation.x = -sw * .65 * (1 - s) + 1.5 * s;
+      /* 腕：歩行の振り／座るとキーボードへ／スタンプで手を振る */
+      const type = s > .5 ? Math.sin(av.t * 14) * .08 : 0;
+      av.arms[0].rotation.x = -sw * .55 * (1 - s) + 1.15 * s + type; av.arms[1].rotation.x = sw * .55 * (1 - s) + 1.15 * s - type;
+      av.arms[0].rotation.z = -.05; av.arms[1].rotation.z = .05;
+      if (av.wave > 0) { av.wave -= dt; av.arms[1].rotation.z = 2.6 + Math.sin(av.t * 16) * .35; av.arms[1].rotation.x = 0; }
+      /* まばたき */
+      av.blink -= dt; const bl = av.blink < .12 ? .1 : 1; if (av.blink < 0) av.blink = rand(2, 5);
+      av.eyes.forEach(e => { e.scale.y = bl; });
+      av.shadow.scale.setScalar(1 - (moving ? Math.abs(Math.sin(av.phase)) * .12 : 0));
+      drawLabel(av, pl ? nameOf(pl.by || pl.peer) : '同僚', actText(pr.act));
+      av.sprite.position.y = 1.95 + .1 * s;
+      av.bubble.position.y = 2.3 + .1 * s;
+      av.sprite.material.opacity = Date.now() - p.updatedAt > 30000 ? .5 : 1;
+      if (av.bubT > 0) { av.bubT -= dt; if (av.bubT <= 0) av.bubble.visible = false; }
+    }
+  }
+  for (const [peer, av] of avatars) if (!seen.has(peer)) { scene.remove(av.grp); avatars.delete(peer); }
 }
 function drawLabel(av, name, act) {
   const key = name + '|' + act; if (av.key === key) return; av.key = key;
@@ -2534,42 +2670,7 @@ function actText(act) {
   if (act.startsWith('st:')) { const ci = +act.slice(3); const c = state.cos[ci]; return c ? `${stationLabel(ci)} ${c.short}` : ''; }
   return { news: 'ニュース', all: '#株クラ', cal: '決算予定', pos: '持ち株', team: 'チャット' }[act] || '';
 }
-function updateAvatars(dt, k) {
-  const seen = new Set();
-  if (isMulti() && NET.office) {
-    for (const p of NET.office.peers()) {
-      if (p.sameTab || p.kind !== 'viewer') continue;
-      const pr = p.presence || {}; if (typeof pr.x !== 'number' || typeof pr.z !== 'number') continue;
-      seen.add(p.peer);
-      let av = avatars.get(p.peer);
-      const pl = (state.players || []).find(x => x.peer === p.peer);
-      const col = pl && pl.seat >= 0 ? SEAT_COLORS[pl.seat] : '#9aa4b8';
-      if (!av || av.col !== col) { if (av) scene.remove(av.grp); av = makeAvatar(col); avatars.set(p.peer, av); }
-      const sitCi = typeof pr.act === 'string' && pr.act.startsWith('st:') ? +pr.act.slice(3) : -1;
-      const st = stations[sitCi];
-      const tx = st ? st.x : clamp(pr.x, ROOM.x0, ROOM.x1), tz = st ? st.z + .66 : clamp(pr.z, ROOM.z0, ROOM.z1);
-      if (!av.init) { av.x = tx; av.z = tz; av.init = true; }
-      const dx = tx - av.x, dz = tz - av.z, dist = Math.hypot(dx, dz);
-      av.x += dx * Math.min(1, dt * 10); av.z += dz * Math.min(1, dt * 10);
-      const ty = st ? 0 : typeof pr.yaw === 'number' ? pr.yaw : 0, tp = typeof pr.pitch === 'number' ? clamp(pr.pitch, -1.2, 1.2) : 0;
-      let dy = ty - av.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); av.yaw += dy * k; av.pitch += (tp - av.pitch) * k;
-      av.sit += ((st ? 1 : 0) - av.sit) * Math.min(1, dt * 8);
-      av.grp.position.set(av.x, 0, av.z); av.grp.rotation.y = av.yaw; av.head.rotation.x = av.pitch * .7;
-      av.upper.position.y = -.38 * av.sit;
-      const moving = dist > .02 && av.sit < .5;
-      av.phase += moving ? dt * 9 : 0;
-      const sw = moving ? Math.sin(av.phase) * .5 : 0;
-      av.legs[0].rotation.x = sw - 1.45 * av.sit; av.legs[1].rotation.x = -sw - 1.45 * av.sit;
-      av.legs.forEach(l => { l.position.y = .66 - .2 * av.sit; });
-      if (!st && moving) av.grp.position.y = Math.abs(Math.sin(av.phase)) * .03;
-      drawLabel(av, pl ? nameOf(pl.by || pl.peer) : '同僚', actText(pr.act));
-      av.sprite.position.y = 2.2 - .38 * av.sit;
-      av.sprite.material.opacity = Date.now() - p.updatedAt > 30000 ? .5 : 1;
-      if (av.bubT > 0) { av.bubT -= dt; if (av.bubT <= 0) av.bubble.visible = false; }
-    }
-  }
-  for (const [peer, av] of avatars) if (!seen.has(peer)) { scene.remove(av.grp); avatars.delete(peer); }
-}
+
 function setPName(v, from) {
   LOCAL.pname = cleanName(v);
   try { localStorage.setItem('kabutocho-name', LOCAL.pname); } catch (e) { }
@@ -2578,7 +2679,7 @@ function setPName(v, from) {
   relabelAvatars(); markAllDirty(); renderTeam(); hudDirty = true;
 }
 function relabelAvatars() { for (const av of avatars.values()) av.key = ''; }
-function showBubble(peer, text) { const av = avatars.get(peer); if (av) drawBubble(av, text); }
+function showBubble(peer, text) { const av = avatars.get(peer); if (av) { drawBubble(av, text); av.wave = 1.6; } }
 function layoutSeats() { relabelAvatars(); markAllDirty(); updateStations(); }
 
 /* =========================================================
@@ -2698,7 +2799,8 @@ function drawDeskInfo(g, s, ci) {
   s.live = mine; s.regions = [];
   g.fillStyle = '#0a0d17'; g.fillRect(0, 0, W, H);
   if (!powered(ci)) return;
-  const tab = mine ? LOCAL.itab : 'co';
+  const du = (state.deskUI || {})[ci] || {};
+  const tab = mine ? LOCAL.itab : (du.itab || 'co');
   const tabs = [['co', '#' + c.short], ['news', 'ニュース'], ['info', '会社情報'], ['acct', 'アカウント']], tw = W / tabs.length;
   tabs.forEach(([id, l], i) => {
     const x = i * tw, on = tab === id;
@@ -2707,18 +2809,32 @@ function drawDeskInfo(g, s, ci) {
     g.fillStyle = on ? (id === 'news' ? C.amber : C.sns) : hov ? '#1d2740' : '#121a2a'; g.fillRect(x + 2, 0, tw - 4, 64);
     g.fillStyle = on ? (id === 'news' ? '#1e1405' : '#fff') : C.muted; g.font = `900 28px ${F_JP}`; g.textAlign = 'center'; g.fillText(l, x + tw / 2, 42, tw - 16); g.textAlign = 'left';
   });
-  if (tab === 'co') drawTimeline(g, snsForCo(ci), 16, 78, W - 32, H - 86, 24, c, 10);
+  if (tab === 'co') { const pk = mine ? LOCAL.prof : du.prof; if (pk) drawProfile(g, s, pk); else { const r = drawTimeline(g, snsForCo(ci), 16, 78, W - 48, H - 86, 24, c, 10, { s, off: mine ? LOCAL.coScroll || 0 : 0 }); if (mine) LOCAL.coScroll = Math.min(LOCAL.coScroll || 0, Math.max(0, r.total - 1)); } }
   else if (tab === 'news') {
-    const art = mine && LOCAL.art != null ? state.feed.find(x => x.k === 'news' && x.nid === LOCAL.art) : null;
-    if (art) drawArticle(g, s, art); else drawNewsList(g, 16, 76, W - 32, H - 80, 26, s, 6);
+    const artId = mine ? LOCAL.art : du.art, art = artId != null ? state.feed.find(x => x.k === 'news' && x.nid === artId) : null;
+    if (art) drawArticle(g, s, art); else drawNewsList(g, 16, 76, W - 44, H - 80, 26, s, 6);
   }
   else if (tab === 'info') drawInfoTab(g, ci);
-  else drawAcctTab(g, s, ci);
+  else drawAcctTab(g, s, ci, mine ? myKey() : deskOwner(ci, du));
 }
-function drawTimeline(g, items, x0, y0, w, h, fs, c, maxN) {
-  let y = y0 + fs + 6;
-  const list = items.slice(-(maxN || 8)).reverse();
-  if (!list.length) { g.fillStyle = C.muted; g.font = `500 ${fs}px ${F_JP}`; g.fillText('投稿なし', x0, y); return; }
+/* ---- SNS：アカウントページとスクロール ---- */
+function acctKeyOf(it) { return it.acct === 'player' ? 'p:' + it.who : it.acct; }
+function postsOf(key) { return state.feed.filter(x => x.k === 'sns' && acctKeyOf(x) === key); }
+function chLabel(ch) { return ch === 'all' ? '#株クラ' : state.cos[ch] ? '#' + state.cos[ch].short : ''; }
+function acctInfo(key) {
+  if (String(key).startsWith('p:')) {
+    const who = key.slice(2), cr = peekCred(who), p = playerByKey(who), seat = who === myKey() ? Math.max(0, mySeat()) : p && p.seat >= 0 ? p.seat : -1;
+    return { name: nameOf(who), handle: '@kabutodesk_' + (Math.max(0, seat) + 1), fol: cr.fol, col: seat >= 0 ? SEAT_COLORS[seat] : C.amber, player: true };
+  }
+  const a = ACC[key] || { name: '?', handle: '', hue: 0, fol: 0 };
+  return { name: a.name, handle: a.handle, fol: a.fol || 0, col: `hsl(${a.hue} 38% 42%)`, player: false };
+}
+function drawTimeline(g, items, x0, y0, w, h, fs, c, maxN, opt) {
+  opt = opt || {};
+  const s = opt.s, live = s && s.live, all = items.slice().reverse(), off = clamp(opt.off || 0, 0, Math.max(0, all.length - 1));
+  const list = live ? all.slice(off) : all.slice(0, maxN || 8);
+  let y = y0 + fs + 6, shown = 0;
+  if (!list.length) { g.fillStyle = C.muted; g.font = `500 ${fs}px ${F_JP}`; g.fillText('投稿なし', x0, y); return { total: all.length, shown: 0 }; }
   for (const it of list) {
     const a = snsAuthor(it), r = fs * .62, fol = folOf(it), tx = x0 + r * 2 + 12;
     g.font = `500 ${fs}px ${F_JP}`;
@@ -2727,25 +2843,86 @@ function drawTimeline(g, items, x0, y0, w, h, fs, c, maxN) {
     const hh = fs * 1.3 + lines.length * fs * 1.2 + 12;
     if (y - fs + hh > y0 + h + 6) break;
     if (a.player) { g.fillStyle = 'rgba(242,169,59,.10)'; g.fillRect(x0 - 8, y - fs - 4, w + 16, hh - 4); }
+    g.font = `700 ${fs * .8}px ${F_JP}`;
+    const nmW = Math.min(g.measureText(a.name).width, w * .44);
+    if (live) {
+      const id = 'prof:' + acctKeyOf(it), hov = UI.hover && UI.hover.s === s && UI.hover.id === id;
+      s.regions.push({ id, x: x0 - 6, y: y - fs - 2, w: r * 2 + 18 + nmW, h: fs * 1.15 });
+      if (hov) { g.fillStyle = 'rgba(255,255,255,.1)'; rr(g, x0 - 6, y - fs - 2, r * 2 + 18 + nmW, fs * 1.15, 8); g.fill(); }
+    }
     g.fillStyle = a.col; g.beginPath(); g.arc(x0 + r, y - r * .5, r, 0, Math.PI * 2); g.fill();
     g.fillStyle = a.player ? '#0b0f17' : 'rgba(255,255,255,.9)'; g.font = `900 ${Math.round(r * 1.05)}px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(a.name)[0] || '?', x0 + r, y - r * .5 + 1); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
-    g.fillStyle = a.player ? C.amber : C.fg; g.font = `700 ${fs * .8}px ${F_JP}`;
-    const nmW = Math.min(g.measureText(a.name).width, w * .44); g.fillText(a.name, tx, y - 2, w * .44);
-    /* フォロワー数（多いほど明るい色） */
+    g.fillStyle = a.player ? C.amber : C.fg; g.font = `700 ${fs * .8}px ${F_JP}`; g.fillText(a.name, tx, y - 2, w * .44);
+    if (live) { g.fillStyle = 'rgba(159,208,255,.35)'; g.fillRect(tx, y + 1, nmW, 1.5); }
     const fstr = folStr(fol), fcol = folCol(fol); g.font = `700 ${Math.round(fs * .62)}px ${F_NUM}`;
     const fw = g.measureText(fstr).width, px = tx + nmW + 10, ph = fs * .86, py = y - fs * .78;
     rr(g, px, py, fw + fs * .95, ph, ph / 2); g.fillStyle = 'rgba(255,255,255,.07)'; g.fill();
     g.fillStyle = fcol; g.beginPath(); g.arc(px + fs * .32, py + ph * .36, fs * .1, 0, Math.PI * 2); g.fill();
     g.beginPath(); g.arc(px + fs * .32, py + ph * .86, fs * .2, Math.PI, 0); g.fill();
     g.fillText(fstr, px + fs * .6, py + ph * .76);
-    g.fillStyle = C.faint; g.font = `500 ${fs * .7}px ${F_NUM}`; g.textAlign = 'right'; g.fillText(it.tl, x0 + w, y - 2); g.textAlign = 'left';
+    g.fillStyle = C.faint; g.font = `500 ${fs * .7}px ${F_NUM}`; g.textAlign = 'right'; g.fillText(it.tl, x0 + w - (live ? 14 : 0), y - 2); g.textAlign = 'left';
     g.fillStyle = '#d3dbea'; g.font = `500 ${fs}px ${F_JP}`;
     lines.forEach((l, i) => g.fillText(l, tx, y + fs * 1.15 + i * fs * 1.2));
-    y += hh;
+    y += hh; shown++;
   }
+  if (live) drawScrollUI(g, s, x0 + w + 4, y0, h, off, shown, all.length);
+  return { total: all.length, shown };
 }
+/* スクロールバーと「最新へ」ボタン */
+function drawScrollUI(g, s, x, y0, h, off, shown, total) {
+  if (total <= shown && off === 0) return;
+  const th = Math.max(30, h * Math.min(1, shown / Math.max(1, total))), ty = y0 + (h - th) * (total > shown ? off / Math.max(1, total - shown) : 0);
+  rr(g, x - 4, y0, 6, h, 3); g.fillStyle = 'rgba(255,255,255,.06)'; g.fill();
+  rr(g, x - 4, clamp(ty, y0, y0 + h - th), 6, th, 3); g.fillStyle = 'rgba(159,208,255,.55)'; g.fill();
+  if (off > 0) uiBtn(g, s, 'scroll:top', x - 176, y0 + 2, 160, 40, `▲ 最新へ（${off}）`, { font: `700 19px ${F_JP}`, bg: '#1d6fd1', r: 20 });
+}
+function drawProfile(g, s, key) {
+  const W = INFO_W, H = INFO_H, info = acctInfo(key), posts = postsOf(key).reverse(), x0 = 24, w = W - 60;
+  uiBtn(g, s, 'prof:back', 14, 74, 132, 46, '‹ 戻る', { font: `700 22px ${F_JP}`, r: 8 });
+  g.fillStyle = info.col; g.beginPath(); g.arc(196, 108, 30, 0, Math.PI * 2); g.fill();
+  g.fillStyle = info.player ? '#0b0f17' : '#fff'; g.font = `900 30px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(info.name)[0] || '?', 196, 110); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.fillStyle = C.fg; g.font = `900 28px ${F_JP}`; g.fillText(info.name, 238, 104, 380);
+  g.fillStyle = C.muted; g.font = `500 17px ${F_NUM}`; g.fillText(info.handle, 238, 130, 380);
+  g.textAlign = 'right'; g.fillStyle = folCol(info.fol) === C.muted ? C.fg : folCol(info.fol); g.font = `700 34px ${F_NUM}`; g.fillText(folStr(info.fol), W - 24, 106);
+  g.fillStyle = C.muted; g.font = `700 16px ${F_JP}`; g.fillText(`フォロワー・投稿 ${posts.length}件`, W - 24, 130); g.textAlign = 'left';
+  g.fillStyle = C.line; g.fillRect(14, 146, W - 28, 2);
+  const live = s && s.live, off = live ? clamp(LOCAL.profScroll || 0, 0, Math.max(0, posts.length - 1)) : 0; if (live) LOCAL.profScroll = off;
+  let y = 180, shown = 0;
+  if (!posts.length) { g.fillStyle = C.muted; g.font = `500 22px ${F_JP}`; g.fillText('最近の投稿はありません', x0, y); return; }
+  for (const it of posts.slice(off)) {
+    g.font = `500 24px ${F_JP}`;
+    const lines = wrapLines(g, it.text, w, 2), hh = 32 + lines.length * 30 + 12;
+    if (y - 22 + hh > H - 4) break;
+    g.fillStyle = it.ch === 'all' ? '#9fd0ff' : C.amber; g.font = `700 19px ${F_JP}`; g.fillText(chLabel(it.ch), x0, y);
+    g.fillStyle = C.muted; g.font = `500 19px ${F_NUM}`; g.fillText(it.tl, x0 + 170, y);
+    g.fillStyle = '#d3dbea'; g.font = `500 24px ${F_JP}`; lines.forEach((l, i) => g.fillText(l, x0, y + 32 + i * 30));
+    y += hh; shown++;
+  }
+  if (live) drawScrollUI(g, s, x0 + w + 20, 156, H - 164, off, shown, posts.length);
+}
+/* 右モニター上のホイール：タイムライン・記事一覧・アカウントページをスクロール */
+function scrollInfo(d) {
+  if (LOCAL.itab === 'co') { if (LOCAL.prof) LOCAL.profScroll = Math.max(0, (LOCAL.profScroll || 0) + d); else LOCAL.coScroll = Math.max(0, (LOCAL.coScroll || 0) + d); }
+  else if (LOCAL.itab === 'news' && LOCAL.art == null) LOCAL.newsScroll = Math.max(0, (LOCAL.newsScroll || 0) + d);
+  else return false;
+  renderCoFeed(); return true;
+}
+/* 中央パネル（DOM）版のアカウントページ */
+function renderProfileDOM() {
+  const key = LOCAL.profKey; if (!key) return;
+  const info = acctInfo(key), posts = postsOf(key).reverse();
+  $('#profHead').innerHTML = `<button type="button" class="pback" id="profBack">‹ 戻る</button><div class="av" style="background:${info.col};color:${info.player ? '#0b0f17' : '#fff'}">${esc(Array.from(info.name)[0] || '?')}</div><div class="pinfo"><b>${esc(info.name)}</b><span class="handle">${esc(info.handle)}</span></div><div class="pfol"><b class="num" style="color:${folCol(info.fol)}">${esc(folStr(info.fol))}</b><small>フォロワー・投稿 ${posts.length}件</small></div>`;
+  $('#profBack').onclick = () => { openPanel(LOCAL.profFrom || 'all'); };
+  $('#fProf').innerHTML = posts.length ? posts.map(it => `<li class="it"><div class="meta"><span class="tag">${esc(chLabel(it.ch))}</span><time>${esc(it.tl)}</time></div><p>${esc(it.text).replace(/#(\d{4})/g, (_, code) => codeChip(code))}</p></li>`).join('') : '<li class="it"><p class="empty">最近の投稿はありません</p></li>';
+}
+function openProfile(key) {
+  if (LOCAL.panel && LOCAL.panel !== 'prof' && LOCAL.panel !== 'desk') LOCAL.profFrom = LOCAL.panel;
+  LOCAL.profKey = key; openPanel('prof'); renderProfileDOM();
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.acctlink'); if (b) { e.preventDefault(); openProfile(b.dataset.acct); } });
 function drawNewsList(g, x0, y0, w, h, fs, s, maxN) {
-  const items = state.feed.filter(x => x.k === 'news').slice(-(maxN || 6)).reverse(); let y = y0;
+  const click0 = s && s.live, allN = state.feed.filter(x => x.k === 'news').reverse(), noff = click0 ? clamp(LOCAL.newsScroll || 0, 0, Math.max(0, allN.length - 1)) : 0; if (click0) LOCAL.newsScroll = noff;
+  const items = click0 ? allN.slice(noff) : allN.slice(0, maxN || 6); let y = y0, nshown = 0;
   if (!items.length) { g.fillStyle = C.muted; g.font = `500 ${fs}px ${F_JP}`; g.fillText('配信待ち', x0, y + fs); return; }
   const click = s && s.live;
   for (const it of items) {
@@ -2762,8 +2939,9 @@ function drawNewsList(g, x0, y0, w, h, fs, s, maxN) {
     g.fillStyle = newsTagCol(it.tag); g.font = `700 ${fs * .68}px ${F_NUM}`; g.fillText(`${it.tl}  ${it.tag}`, x0 + 4, y + fs * .8 + 6);
     g.fillStyle = C.fg; g.font = `700 ${fs}px ${F_JP}`;
     lines.forEach((l, i) => g.fillText(l, x0 + 4, y + fs * .8 + 14 + (i + 1) * fs * 1.2));
-    y += hh + (click ? 2 : 8);
+    y += hh + (click ? 2 : 8); nshown++;
   }
+  if (click0) drawScrollUI(g, s, x0 + w + 12, y0, h, noff, nshown, allN.length);
 }
 function drawArticle(g, s, it) {
   const W = INFO_W, H = INFO_H, x0 = 26, w = W - 52;
@@ -2833,15 +3011,19 @@ function folAnim(dt) {
     if (SEAT.ci >= 0 && LOCAL.itab === 'acct') renderCoFeed();
   }
 }
-function drawAcctTab(g, s, ci) {
-  const W = INFO_W, H = INFO_H, c = state.cos[ci], key = myKey(), cr = peekCred(key), nm = nameOf(key), col = SEAT_COLORS[Math.max(0, mySeat())] || C.amber;
+/* 席のアカウント画面に映す人：座っている人 → 最後に使った人 */
+function deskOwner(ci, du) { const u = deskUser(ci); if (u) return u.by || u.peer; return du && du.who || null; }
+function seatOfKey(key) { if (key === myKey()) return Math.max(0, mySeat()); const p = playerByKey(key); return p && p.seat >= 0 ? p.seat : -1; }
+function drawAcctTab(g, s, ci, who) {
+  if (!who) { g.fillStyle = C.faint; g.font = `700 28px ${F_JP}`; g.textAlign = 'center'; g.fillText('空席', INFO_W / 2, INFO_H / 2); g.textAlign = 'left'; return; }
+  const live = s && s.live, W = INFO_W, H = INFO_H, c = state.cos[ci], key = who, cr = peekCred(key), nm = nameOf(key), sk = seatOfKey(key), col = sk >= 0 ? SEAT_COLORS[sk] : '#9aa4b8';
   const shown = FOLA.key === key && FOLA.shown != null ? Math.round(FOLA.shown) : cr.fol;
   const gr = g.createLinearGradient(0, 64, W, 140); gr.addColorStop(0, '#173764'); gr.addColorStop(1, '#3b1a63'); g.fillStyle = gr; g.fillRect(0, 64, W, 74);
   g.fillStyle = '#0a0d17'; g.beginPath(); g.arc(74, 142, 50, 0, Math.PI * 2); g.fill();
   g.fillStyle = col; g.beginPath(); g.arc(74, 142, 44, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#0b0f17'; g.font = `900 44px ${F_JP}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(Array.from(nm)[0] || '社', 74, 144); g.textAlign = 'left'; g.textBaseline = 'alphabetic';
   g.fillStyle = C.fg; g.font = `900 30px ${F_JP}`; g.fillText(nm, 136, 172, 330);
-  g.fillStyle = C.muted; g.font = `500 20px ${F_NUM}`; g.fillText(`@kabutodesk_${Math.max(0, mySeat()) + 1}`, 136, 200);
+  g.fillStyle = C.muted; g.font = `500 20px ${F_NUM}`; g.fillText(`@kabutodesk_${Math.max(0, sk) + 1}`, 136, 200);
   /* フォロワー数：増減中は色が変わり、差分が浮かび上がる */
   const anim = FOLA.key === key && FOLA.t > 0, up = FOLA.delta > 0;
   g.textAlign = 'right';
@@ -2880,7 +3062,7 @@ function drawAcctTab(g, s, ci) {
   const wait = state.phase === 'market' ? postWait(cr) : 0, off = wait > 0 || state.phase !== 'market';
   POST_TPL[dir > 0 ? 'up' : 'down'].forEach((f, i) => uiBtn(g, s, 'tpl:' + i, 20, 370 + i * 54, W - 40, 46, f(c), { off, font: `700 24px ${F_JP}`, r: 8 }));
   g.font = `700 21px ${F_JP}`;
-  if (LOCAL.pmsg) { g.fillStyle = LOCAL.pmsgCls === 'err' ? C.up : C.ok; g.fillText(LOCAL.pmsg, 24, 546, W - 260); }
+  if (live && LOCAL.pmsg) { g.fillStyle = LOCAL.pmsgCls === 'err' ? C.up : C.ok; g.fillText(LOCAL.pmsg, 24, 546, W - 260); }
   g.textAlign = 'right'; g.fillStyle = wait > 0 ? C.muted : C.ok; g.fillText(state.phase !== 'market' ? '' : wait > 0 ? `次の投稿まで ${wait}分` : '投稿できます', W - 24, 546); g.textAlign = 'left';
 }
 /* ---- 正面の各モニター ---- */
@@ -2959,7 +3141,7 @@ function bigFx(o) {
   BIGFX.t = 7; BIGFX.text = String(o.text || ''); BIGFX.sign = o.sign | 0; BIGFX.ci = typeof o.ci === 'number' ? o.ci : -1;
   banner(BIGFX.text, 'big alert', 7500); logLine(BIGFX.text, 'news'); sfx('siren'); bigBoard.dirty = true;
   const c = state.cos[BIGFX.ci]; if (c) { c.flash = Math.max(c.flash, 7); markDirty(c.i); }
-  if (state.phase === 'market') snsBurst(BIGFX.ci, BIGFX.sign);
+  if (state.phase === 'market' && runsSim()) snsBurst(BIGFX.ci, BIGFX.sign);
 }
 function snsBurst(ci, sign) {
   const pool = sign >= 0 ? BURST_UP : BURST_DN, c = state.cos[ci];
@@ -3120,8 +3302,9 @@ function sitDown(ci) {
   releaseLook(); keys.clear();
   SEAT.ci = ci; seatLook = { yaw: 0, pitch: 0 };
   const prev = LOCAL.sel; LOCAL.sel = ci; markDirty(prev); markDirty(ci);
-  LOCAL.panel = 'desk'; LOCAL.itab = ['co', 'news', 'info', 'acct'].includes(LOCAL.itab) ? LOCAL.itab : 'co'; LOCAL.art = null; LOCAL.zoom = 1; LOCAL.msg = ''; LOCAL.pmsg = '';
+  LOCAL.panel = 'desk'; { const sh = (state.deskUI || {})[ci] || {}, u = (LOCAL.deskUI = LOCAL.deskUI || {})[ci] || {}; LOCAL.itab = ['co', 'news', 'info', 'acct'].includes(sh.itab) ? sh.itab : 'co'; LOCAL.art = sh.art != null ? sh.art : null; LOCAL.prof = sh.prof || null; LOCAL.coScroll = u.coScroll || 0; LOCAL.newsScroll = u.newsScroll || 0; LOCAL.profScroll = u.profScroll || 0; } LOCAL.zoom = 1; LOCAL.msg = ''; LOCAL.pmsg = '';
   stations[ci].chair.visible = false;
+  deskSent = ''; pushDeskUI(true);
   document.body.classList.add('seated'); $('#prompt').hidden = true;
   sfx('chat');
 }
@@ -3130,9 +3313,18 @@ function standUp(relock) {
   const st = stations[SEAT.ci];
   P.x = st.x; P.z = st.z + 1.25; P.yaw = 0; P.pitch = -.05;
   if (blocked(P.x, P.z)) P.z += .3;
-  const ci = SEAT.ci; SEAT.ci = -1; LOCAL.panel = null; LOCAL.zoom = 1; st.chair.visible = true; markDirty(ci); UI.hover = null; canvas.style.cursor = '';
+  pushDeskUI();
+  const ci = SEAT.ci; (LOCAL.deskUI = LOCAL.deskUI || {})[ci] = { itab: LOCAL.itab, art: LOCAL.art, prof: LOCAL.prof, coScroll: LOCAL.coScroll || 0, newsScroll: LOCAL.newsScroll || 0, profScroll: LOCAL.profScroll || 0 };
+  SEAT.ci = -1; LOCAL.panel = null; LOCAL.zoom = 1; st.chair.visible = true; markDirty(ci); UI.hover = null; canvas.style.cursor = '';
   document.body.classList.remove('seated');
   if (relock) requestLook();
+}
+let deskSent = '';
+function pushDeskUI(force) {
+  if (SEAT.ci < 0) return;
+  const u = { itab: LOCAL.itab, art: LOCAL.art != null ? LOCAL.art : null, prof: LOCAL.prof || null }, key = SEAT.ci + '|' + JSON.stringify(u);
+  if (!force && key === deskSent) return; deskSent = key;
+  request('ctl', { a: 'desk', ci: SEAT.ci, u });
 }
 function renderDesk() { if (SEAT.ci >= 0) { stations[SEAT.ci].main.dirty = true; stations[SEAT.ci].info.dirty = true; } }
 function renderCoFeed() { if (SEAT.ci >= 0) stations[SEAT.ci].info.dirty = true; }
@@ -3158,11 +3350,15 @@ function deskAction(id) {
   else if (id === 'qall') { const p = myPos(c.code); if (p && p.qty > 0) setQty(p.qty); else setMsg('持ち株なし', 'err'); }
   else if (id === 'buy') trade(1);
   else if (id === 'sell') trade(-1);
-  else if (id.startsWith('tab:')) { LOCAL.itab = id.slice(4); LOCAL.art = null; renderCoFeed(); }
+  else if (id === 'prof:back') { LOCAL.prof = null; LOCAL.profScroll = 0; renderCoFeed(); }
+  else if (id.startsWith('prof:')) { LOCAL.prof = id.slice(5); LOCAL.profScroll = 0; renderCoFeed(); }
+  else if (id === 'scroll:top') { if (LOCAL.itab === 'co') { if (LOCAL.prof) LOCAL.profScroll = 0; else LOCAL.coScroll = 0; } else LOCAL.newsScroll = 0; renderCoFeed(); }
+  else if (id.startsWith('tab:')) { LOCAL.itab = id.slice(4); LOCAL.art = null; LOCAL.prof = null; renderCoFeed(); }
   else if (id === 'news:back') { LOCAL.art = null; renderCoFeed(); }
   else if (id.startsWith('news:')) { LOCAL.art = +id.slice(5); renderCoFeed(); }
   else if (id.startsWith('dir:')) { LOCAL.pdir = +id.slice(4); renderCoFeed(); }
   else if (id.startsWith('tpl:')) sendPost(+id.slice(4));
+  if (/^(tab:|news:|prof:)/.test(id)) pushDeskUI();
   sfx('chat');
 }
 function sendPost(ti) {
@@ -3173,14 +3369,14 @@ function sendPost(ti) {
 }
 
 /* ---- 中央パネル ---- */
-const PANEL_SECTIONS = { news: '#pNews', all: '#pSns', cal: '#pCal', pos: '#pPos', team: '#pTeam' };
+const PANEL_SECTIONS = { news: '#pNews', all: '#pSns', cal: '#pCal', pos: '#pPos', team: '#pTeam', prof: '#pProf' };
 function openPanel(kind) {
   if (!PANEL_SECTIONS[kind]) return;
   if (LOCAL.panel === 'desk') standUp(false);
   releaseLook(); keys.clear();
   LOCAL.panel = kind;
   for (const [k, sel] of Object.entries(PANEL_SECTIONS)) $(sel).hidden = k !== kind;
-  $('#panelTitle').textContent = { news: 'ニュース', all: '#株クラ', cal: '決算発表', pos: '持ち株一覧', team: 'チーム' }[kind];
+  $('#panelTitle').textContent = { news: 'ニュース', all: '#株クラ', cal: '決算発表', pos: '持ち株一覧', team: 'チーム', prof: 'アカウント' }[kind];
   if (kind === 'cal') renderCalendar();
   if (kind === 'pos') renderPositions();
   if (kind === 'team') { unread.team = 0; renderTeam(); }
@@ -3247,6 +3443,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => {
   if (!state || state.phase === 'title' || !$('#overlay').hidden || (LOCAL.panel && LOCAL.panel !== 'desk')) return;
   e.preventDefault();
+  if (seatedActive() && SEAT.ci >= 0) { const h = deskHit(e); if (h && h.s === stations[SEAT.ci].info) { LOCAL.wacc = (LOCAL.wacc || 0) + e.deltaY; if (Math.abs(LOCAL.wacc) >= 50) { const d = Math.sign(LOCAL.wacc); LOCAL.wacc = 0; if (scrollInfo(d)) return; } else if (LOCAL.itab === 'co' || (LOCAL.itab === 'news' && LOCAL.art == null)) return; } }
   LOCAL.zoom = clamp(LOCAL.zoom * Math.exp(clamp(e.deltaY, -120, 120) * .002), .35, 1.15);
 }, { passive: false });
 function pingTarget() { if (target && (target.kind === 'st' || target.kind === 'front') && powered(target.ci)) sendPing(target.ci); }
@@ -3633,7 +3830,7 @@ document.addEventListener('keydown', e => {
     else if (k === 's') { trade(-1); e.preventDefault(); }
     else if (e.key === 'ArrowUp') { setQty(LOCAL.qty + 100); e.preventDefault(); }
     else if (e.key === 'ArrowDown') { setQty(LOCAL.qty - 100); e.preventDefault(); }
-    else if (e.key === 'Tab') { LOCAL.itab = ITABS[(Math.max(0, ITABS.indexOf(LOCAL.itab)) + (e.shiftKey ? 3 : 1)) % 4]; LOCAL.art = null; renderCoFeed(); e.preventDefault(); }
+    else if (e.key === 'Tab') { LOCAL.itab = ITABS[(Math.max(0, ITABS.indexOf(LOCAL.itab)) + (e.shiftKey ? 3 : 1)) % 4]; LOCAL.art = null; LOCAL.prof = null; renderCoFeed(); pushDeskUI(); e.preventDefault(); }
     else if (k === 'q') sendPing(LOCAL.sel);
     else if (k === 'p') request('ctl', { a: 'pause', v: !state.paused });
     else if (e.key === 'Enter') { if (isMulti()) { showChatBar(); e.preventDefault(); } }
