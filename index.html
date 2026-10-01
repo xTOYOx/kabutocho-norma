@@ -3378,7 +3378,7 @@ function drawLogo() {
   g.fillText('カブトデスク証券　TRADING FLOOR', 512, 206, 900);
   g.shadowBlur = 0; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; logoTex.tex.needsUpdate = true;
 }
-const GAME_VERSION = 'v44 P2P';
+const GAME_VERSION = 'v45 P2P';
 const DOOR = { x0: 3.2, x1: 4.4, h: 2.25, x: 3.8 };
 /* 会議室：オフィスの奥の壁の左側から入る */
 const MR = { x0: -7.4, x1: -1.8, z0: 7, z1: 12.6, h: 3.0, cx: -4.6 };
@@ -6003,15 +6003,16 @@ function drawBigBoard(g) {
   g.fillStyle = C.amber; g.font = `700 30px ${F_NUM}`; g.fillText(`DAY ${state.day}`, 36, 56);
   g.fillStyle = C.muted; g.font = `700 26px ${F_JP}`; g.fillText(sl, 172, 56);
   g.fillStyle = C.fg; g.font = `700 88px ${F_NUM}`; g.fillText(hhmm(state.minute), 30, 150);
-  const cash = state.cash, stock = stockValue(), a = cash + stock, q = state.quota, r = a / q, pnl = a - state.stats.dayStart;
+  const cash = state.cash, stock = stockValue(), debt = debtTotal(), a = assets(), q = state.quota, r = a / q, pnl = a - state.stats.dayStart;
   g.fillStyle = C.muted; g.font = `700 26px ${F_JP}`; g.fillText('総資産', 420, 56);
   g.fillStyle = r >= 1 ? C.ok : C.fg; g.font = `700 76px ${F_NUM}`; g.fillText(yen(a), 416, 146, 470);
+  if (debt > 0) { g.fillStyle = C.up; g.font = `700 20px ${F_JP}`; g.fillText(`借入 ${yen(debt)} を差し引き済み`, 420, 174, 470); }
   g.fillStyle = daysLeft(state.day) === 0 ? C.up : C.muted; g.font = `700 26px ${F_JP}`; g.fillText(daysLeft(state.day) === 0 ? 'ノルマ（本日〆）' : `ノルマ（〆DAY ${deadlineOf(state.day)}）`, 920, 56, 330);
   g.fillStyle = C.note; g.font = `700 44px ${F_NUM}`; g.fillText(yen(q), 918, 106, 330);
   g.fillStyle = r >= 1 ? C.ok : C.up; g.font = `900 34px ${F_JP}`; g.fillText(r >= 1 ? `達成 ${sYen(a - q)}` : `あと ${yen(q - a)}`, 918, 150, 330);
   const bx = 36, by = 182, bw = W - 72, bh = 34, scale = 1.25 * q;
   rr(g, bx, by, bw, bh, 17); g.fillStyle = '#1a2335'; g.fill();
-  const cw = clamp(Math.max(0, cash) / scale, 0, 1) * bw, sw2 = clamp(Math.max(0, stock) / scale, 0, 1) * bw;
+  const cw = clamp(Math.max(0, cash - debt) / scale, 0, 1) * bw, sw2 = clamp(Math.max(0, stock) / scale, 0, 1) * bw;
   g.save(); rr(g, bx, by, bw, bh, 17); g.clip(); g.fillStyle = C.cash; g.fillRect(bx, by, cw, bh); g.fillStyle = C.amber; g.fillRect(bx + cw, by, Math.min(sw2, bw - cw), bh); g.restore();
   g.fillStyle = C.note; g.fillRect(bx + bw * .8 - 3, by - 10, 6, bh + 20);
   g.font = `700 26px ${F_JP}`; g.fillStyle = C.cash; g.fillText('現金', bx, by + bh + 42);
